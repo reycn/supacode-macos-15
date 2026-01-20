@@ -1,6 +1,7 @@
 # Derived values (DO NOT TOUCH).
 CURRENT_MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 CURRENT_MAKEFILE_DIR := $(patsubst %/,%,$(dir $(CURRENT_MAKEFILE_PATH)))
+GHOSTTY_XCFRAMEWORK_PATH := $(CURRENT_MAKEFILE_DIR)/Frameworks/GhosttyKit.xcframework
 
 .DEFAULT_GOAL := help
 .PHONY: serve build-ghostty-xcframework build-app run-app sync-ghostty-resources
@@ -10,7 +11,9 @@ help:  # Display this help.
 	@-+echo
 	@-+grep -Eh "^[a-z-]+:.*#" $(CURRENT_MAKEFILE_PATH) | sed -E 's/^(.*:)(.*#+)(.*)/  \1 @@@ \3 /' | column -t -s "@@@"
 
-build-ghostty-xcframework: # Build ghostty framework
+build-ghostty-xcframework: $(GHOSTTY_XCFRAMEWORK_PATH) # Build ghostty framework
+
+$(GHOSTTY_XCFRAMEWORK_PATH):
 	@cd $(CURRENT_MAKEFILE_DIR) && git submodule update --init --recursive
 	@cd $(CURRENT_MAKEFILE_DIR) && mise install
 	@cd $(CURRENT_MAKEFILE_DIR)/ThirdParty/ghostty && mise exec -- zig build -Doptimize=ReleaseFast -Demit-xcframework=true -Dsentry=false
@@ -27,8 +30,8 @@ sync-ghostty-resources: # Sync ghostty resources (themes, docs) over to the main
 	mkdir -p "$$dst"; \
 	rsync -a --delete "$$src/" "$$dst/"
 
-build-app: # Build the macOS app (Debug)
-	@cd $(CURRENT_MAKEFILE_DIR) && xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug build
+build-app: build-ghostty-xcframework # Build the macOS app (Debug)
+	@cd $(CURRENT_MAKEFILE_DIR) && xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug build 2>&1 | xcsift
 
 run-app: build-app # Build then launch (Debug)
 	@settings="$$(xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug -showBuildSettings)"; \

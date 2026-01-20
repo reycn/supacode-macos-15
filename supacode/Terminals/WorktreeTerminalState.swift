@@ -40,11 +40,16 @@ final class WorktreeTerminalState: BonsplitDelegate {
     @discardableResult
     func createTab(in pane: PaneID?) -> TabID? {
         let title = "\(worktree.name) \(nextTabIndex())"
-        return controller.createTab(
+        guard let tabId = controller.createTab(
             title: title,
             icon: "terminal",
             inPane: pane
-        )
+        ) else {
+            return nil
+        }
+        controller.selectTab(tabId)
+        surfaceView(for: tabId).requestFocus()
+        return tabId
     }
 
     func surfaceView(for tabId: TabID) -> GhosttySurfaceView {
@@ -66,6 +71,10 @@ final class WorktreeTerminalState: BonsplitDelegate {
     func splitTabBar(_ controller: BonsplitController, didCloseTab tabId: TabID, fromPane pane: PaneID) {
         guard let surface = surfaces.removeValue(forKey: tabId) else { return }
         surface.closeSurface()
+    }
+
+    func splitTabBar(_ controller: BonsplitController, didSelectTab tab: Tab, inPane pane: PaneID) {
+        surfaceView(for: tab.id).requestFocus()
     }
 
     private func nextTabIndex() -> Int {

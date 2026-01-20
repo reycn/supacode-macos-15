@@ -13,6 +13,7 @@ struct ContentView: View {
     let runtime: GhosttyRuntime
     @Environment(RepositoryStore.self) private var repositoryStore
     @State private var terminalStore: WorktreeTerminalStore
+    @State private var sidebarVisibility: NavigationSplitViewVisibility = .all
 
     init(runtime: GhosttyRuntime) {
         self.runtime = runtime
@@ -22,30 +23,14 @@ struct ContentView: View {
     var body: some View {
         @Bindable var repositoryStore = repositoryStore
         let selectedWorktree = repositoryStore.worktree(for: repositoryStore.selectedWorktreeID)
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $sidebarVisibility) {
             SidebarView(repositories: repositoryStore.repositories, selection: $repositoryStore.selectedWorktreeID)
         } detail: {
-            Group {
-                if let selectedWorktree {
-                    WorktreeTerminalTabsView(worktree: selectedWorktree, store: terminalStore)
-                        .id(selectedWorktree.id)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    EmptyStateView()
-                }
-            }
-            .navigationTitle(selectedWorktree?.name ?? "Supacode")
-            .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
-                    Button("Sidebar", systemImage: "sidebar.left", action: {})
-                    Button("Compose", systemImage: "square.and.pencil", action: {})
-                    Button("Settings", systemImage: "gearshape", action: {})
-                }
-            }
-            .focusedSceneValue(\.newTerminalAction, {
-                guard let selectedWorktree else { return }
-                terminalStore.createTab(in: selectedWorktree)
-            })
+            WorktreeDetailView(
+                selectedWorktree: selectedWorktree,
+                terminalStore: terminalStore,
+                toggleSidebar: toggleSidebar
+            )
         }
         .navigationSplitViewStyle(.balanced)
         .onChange(of: repositoryStore.repositories) { _, newValue in
@@ -82,6 +67,44 @@ struct ContentView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
+    }
+
+    private func toggleSidebar() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            sidebarVisibility = sidebarVisibility == .detailOnly ? .all : .detailOnly
+        }
+    }
+}
+
+private struct WorktreeDetailView: View {
+    let selectedWorktree: Worktree?
+    let terminalStore: WorktreeTerminalStore
+    let toggleSidebar: () -> Void
+
+    var body: some View {
+        Group {
+            if let selectedWorktree {
+                WorktreeTerminalTabsView(worktree: selectedWorktree, store: terminalStore)
+                    .id(selectedWorktree.id)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                EmptyStateView()
+            }
+        }
+        .navigationTitle(selectedWorktree?.name ?? "Supacode")
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button("Sidebar", systemImage: "sidebar.left", action: toggleSidebar)
+                    .help("Toggle sidebar (\(AppShortcuts.toggleSidebar.display))")
+                    .keyboardShortcut(AppShortcuts.toggleSidebar.keyEquivalent, modifiers: AppShortcuts.toggleSidebar.modifiers)
+                Button("Compose", systemImage: "square.and.pencil", action: {})
+                Button("Settings", systemImage: "gearshape", action: {})
+            }
+        }
+        .focusedSceneValue(\.newTerminalAction, {
+            guard let selectedWorktree else { return }
+            terminalStore.createTab(in: selectedWorktree)
+        })
     }
 }
 

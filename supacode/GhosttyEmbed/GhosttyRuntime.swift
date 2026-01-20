@@ -14,6 +14,7 @@ final class GhosttyRuntime {
         self.config = config
         ghostty_config_load_default_files(config)
         ghostty_config_load_recursive_files(config)
+        ghostty_config_load_cli_args(config)
         ghostty_config_finalize(config)
 
         var runtimeConfig = ghostty_runtime_config_s(

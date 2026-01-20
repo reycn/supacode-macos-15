@@ -10,7 +10,7 @@ struct OpenRepositoryCommands: Commands {
             Button("Open Repository...", systemImage: "folder") {
                 repositoryStore.isOpenPanelPresented = true
             }
-            .keyboardShortcut("o")
+            .keyboardShortcut(AppShortcuts.openRepository.keyEquivalent, modifiers: AppShortcuts.openRepository.modifiers)
         }
     }
 }

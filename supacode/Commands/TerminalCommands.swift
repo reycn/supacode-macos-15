@@ -8,7 +8,7 @@ struct TerminalCommands: Commands {
             Button("New Terminal") {
                 newTerminalAction?()
             }
-            .keyboardShortcut("t")
+            .keyboardShortcut(AppShortcuts.newTerminal.keyEquivalent, modifiers: AppShortcuts.newTerminal.modifiers)
             .disabled(newTerminalAction == nil)
         }
     }

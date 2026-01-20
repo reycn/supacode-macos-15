@@ -7,6 +7,7 @@ final class GhosttySurfaceView: NSView {
     private let workingDirectoryCString: UnsafeMutablePointer<CChar>?
     private var trackingArea: NSTrackingArea?
     private var lastBackingSize: CGSize = .zero
+    private var pendingFocus = false
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -45,6 +46,10 @@ final class GhosttySurfaceView: NSView {
         super.viewDidMoveToWindow()
         updateContentScale()
         updateSurfaceSize()
+        if pendingFocus {
+            pendingFocus = false
+            window?.makeFirstResponder(self)
+        }
     }
 
     override func viewDidChangeBackingProperties() {
@@ -223,6 +228,14 @@ final class GhosttySurfaceView: NSView {
         ghostty_surface_set_focus(surface, focused)
     }
 
+    func requestFocus() {
+        if window == nil {
+            pendingFocus = true
+            return
+        }
+        window?.makeFirstResponder(self)
+    }
+
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         guard event.type == .keyDown else { return false }
         guard let surface else { return false }
@@ -231,19 +244,31 @@ final class GhosttySurfaceView: NSView {
         var key = ghosttyKeyEvent(translationEvent, action: GHOSTTY_ACTION_PRESS, translationMods: translationMods)
         let text = ghosttyCharacters(translationEvent) ?? ""
         if !text.isEmpty, let codepoint = text.utf8.first, codepoint >= 0x20 {
+            var flags = ghostty_binding_flags_e(0)
             let isBinding = text.withCString { ptr in
                 key.text = ptr
-                return ghostty_surface_key_is_binding(surface, key, nil)
+                return ghostty_surface_key_is_binding(surface, key, &flags)
             }
             if isBinding {
+                if shouldForwardMenu(flags),
+                   let menu = NSApp.mainMenu,
+                   menu.performKeyEquivalent(with: event) {
+                    return true
+                }
                 return text.withCString { ptr in
                     key.text = ptr
                     return ghostty_surface_key(surface, key)
                 }
             }
         } else {
+            var flags = ghostty_binding_flags_e(0)
             key.text = nil
-            if ghostty_surface_key_is_binding(surface, key, nil) {
+            if ghostty_surface_key_is_binding(surface, key, &flags) {
+                if shouldForwardMenu(flags),
+                   let menu = NSApp.mainMenu,
+                   menu.performKeyEquivalent(with: event) {
+                    return true
+                }
                 return ghostty_surface_key(surface, key)
             }
         }
@@ -292,6 +317,14 @@ final class GhosttySurfaceView: NSView {
         }
 
         return false
+    }
+
+    private func shouldForwardMenu(_ flags: ghostty_binding_flags_e) -> Bool {
+        let rawValue = flags.rawValue
+        let consumed = rawValue & GHOSTTY_BINDING_FLAGS_CONSUMED.rawValue != 0
+        let all = rawValue & GHOSTTY_BINDING_FLAGS_ALL.rawValue != 0
+        let performable = rawValue & GHOSTTY_BINDING_FLAGS_PERFORMABLE.rawValue != 0
+        return consumed && !all && !performable
     }
 
     @IBAction func copy(_ sender: Any?) {

@@ -23,4 +23,5 @@ See `./docs/swift-rules.md` for Swift/SwiftUI conventions. Key points:
 
 - After a task make sure the app builds properly.
 - Use Peekabo skill to verify UI behavior if necessary.
+- If you want to inspect a swift pm package, clone it to do so.
 

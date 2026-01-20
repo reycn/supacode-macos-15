@@ -9,42 +9,67 @@ import SwiftUI
 
 struct ContentView: View {
     let runtime: GhosttyRuntime
+    @State private var selectedWorktreeID: Worktree.ID?
+    @StateObject private var terminalStore: GhosttyTerminalStore
+    private let worktrees: [Worktree] = Worktree.sample
+
+    init(runtime: GhosttyRuntime) {
+        self.runtime = runtime
+        _terminalStore = StateObject(wrappedValue: GhosttyTerminalStore(runtime: runtime))
+    }
+
+    private var selectedWorktree: Worktree? {
+        worktrees.first { $0.id == selectedWorktreeID }
+    }
+
     var body: some View {
         NavigationSplitView {
-            SidebarView()
+            SidebarView(worktrees: worktrees, selection: $selectedWorktreeID)
         } detail: {
-            EmptyStateView()
-                .navigationTitle("Supacode")
-                .toolbar {
-                    ToolbarItemGroup(placement: .primaryAction) {
-                        Button(action: {}) {
-                            Image(systemName: "sidebar.left")
-                        }
-                        Button(action: {}) {
-                            Image(systemName: "square.and.pencil")
-                        }
-                        Button(action: {}) {
-                            Image(systemName: "gearshape")
-                        }
+            Group {
+                if let selectedWorktree {
+                    GhosttyTerminalView(
+                        surfaceView: terminalStore.surfaceView(
+                            for: selectedWorktree.id,
+                            workingDirectory: selectedWorktree.workingDirectory
+                        )
+                    )
+                    .id(selectedWorktree.id)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    EmptyStateView()
+                }
+            }
+            .navigationTitle(selectedWorktree?.name ?? "Supacode")
+            .toolbar {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button(action: {}) {
+                        Image(systemName: "sidebar.left")
+                    }
+                    Button(action: {}) {
+                        Image(systemName: "square.and.pencil")
+                    }
+                    Button(action: {}) {
+                        Image(systemName: "gearshape")
                     }
                 }
+            }
         }
         .navigationSplitViewStyle(.balanced)
     }
 }
 
 private struct SidebarView: View {
+    let worktrees: [Worktree]
+    @Binding var selection: Worktree.ID?
     @State private var isRepoExpanded = true
-    private let worktrees: [Worktree] = [
-        Worktree(name: "khoi/tashkent", detail: "tashkent • 1h ago"),
-        Worktree(name: "khoi/karachi", detail: "karachi • 1h ago")
-    ]
 
     var body: some View {
-        List {
+        List(selection: $selection) {
             DisclosureGroup(isExpanded: $isRepoExpanded) {
                 ForEach(worktrees) { worktree in
                     WorktreeRow(name: worktree.name, detail: worktree.detail)
+                        .tag(worktree.id)
                 }
             } label: {
                 RepoHeaderRow(name: "supacode", initials: "S")
@@ -92,12 +117,6 @@ private struct WorktreeRow: View {
             }
         }
     }
-}
-
-private struct Worktree: Identifiable {
-    let id = UUID()
-    let name: String
-    let detail: String
 }
 
 private struct EmptyStateView: View {

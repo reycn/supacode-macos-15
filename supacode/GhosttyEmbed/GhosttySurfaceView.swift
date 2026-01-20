@@ -4,13 +4,19 @@ import GhosttyKit
 final class GhosttySurfaceView: NSView {
     private let runtime: GhosttyRuntime
     private(set) var surface: ghostty_surface_t?
+    private let workingDirectoryCString: UnsafeMutablePointer<CChar>?
     private var trackingArea: NSTrackingArea?
     private var lastBackingSize: CGSize = .zero
 
     override var acceptsFirstResponder: Bool { true }
 
-    init(runtime: GhosttyRuntime) {
+    init(runtime: GhosttyRuntime, workingDirectory: String?) {
         self.runtime = runtime
+        if let workingDirectory {
+            workingDirectoryCString = workingDirectory.withCString { strdup($0) }
+        } else {
+            workingDirectoryCString = nil
+        }
         super.init(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
         wantsLayer = true
         createSurface()
@@ -22,6 +28,9 @@ final class GhosttySurfaceView: NSView {
 
     deinit {
         closeSurface()
+        if let workingDirectoryCString {
+            free(workingDirectoryCString)
+        }
     }
 
     func closeSurface() {
@@ -186,6 +195,7 @@ final class GhosttySurfaceView: NSView {
             nsview: Unmanaged.passUnretained(self).toOpaque()
         ))
         config.scale_factor = backingScaleFactor()
+        config.working_directory = workingDirectoryCString.map { UnsafePointer($0) }
         config.context = GHOSTTY_SURFACE_CONTEXT_WINDOW
         surface = ghostty_surface_new(app, &config)
         updateSurfaceSize()

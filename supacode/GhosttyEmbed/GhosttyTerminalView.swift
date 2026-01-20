@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct GhosttyTerminalView: NSViewRepresentable {
-    @ObservedObject var runtime: GhosttyRuntime
+    let surfaceView: GhosttySurfaceView
 
     func makeNSView(context: Context) -> GhosttySurfaceView {
-        GhosttySurfaceView(runtime: runtime)
+        surfaceView
     }
 
     func updateNSView(_ view: GhosttySurfaceView, context: Context) {

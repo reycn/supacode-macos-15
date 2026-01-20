@@ -105,6 +105,10 @@ private struct WorktreeDetailView: View {
             guard let selectedWorktree else { return }
             terminalStore.createTab(in: selectedWorktree)
         })
+        .focusedSceneValue(\.closeTabAction, {
+            guard let selectedWorktree else { return }
+            terminalStore.closeFocusedTab(in: selectedWorktree)
+        })
     }
 }
 

@@ -52,6 +52,19 @@ final class WorktreeTerminalState: BonsplitDelegate {
         return tabId
     }
 
+    @discardableResult
+    func closeFocusedTab() -> Bool {
+        guard let paneId = controller.focusedPaneId,
+              let tab = controller.selectedTab(inPane: paneId) else {
+            return false
+        }
+        let closed = controller.closeTab(tab.id)
+        if closed, let nextTab = controller.selectedTab(inPane: paneId) {
+            controller.selectTab(nextTab.id)
+        }
+        return closed
+    }
+
     func surfaceView(for tabId: TabID) -> GhosttySurfaceView {
         if let existing = surfaces[tabId] {
             return existing

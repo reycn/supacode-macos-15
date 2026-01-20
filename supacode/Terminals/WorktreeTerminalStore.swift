@@ -26,6 +26,12 @@ final class WorktreeTerminalStore {
         return state.createTab(in: pane)
     }
 
+    @discardableResult
+    func closeFocusedTab(in worktree: Worktree) -> Bool {
+        let state = state(for: worktree)
+        return state.closeFocusedTab()
+    }
+
     func prune(keeping worktreeIDs: Set<Worktree.ID>) {
         var removed: [WorktreeTerminalState] = []
         for (id, state) in states where !worktreeIDs.contains(id) {

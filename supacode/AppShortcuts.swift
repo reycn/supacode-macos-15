@@ -45,5 +45,6 @@ enum AppShortcuts {
     static let newTerminal = AppShortcut(key: "t", modifiers: .command)
     static let openRepository = AppShortcut(key: "o", modifiers: .command)
     static let toggleSidebar = AppShortcut(key: "[", modifiers: .command)
-    static let all: [AppShortcut] = [newTerminal, openRepository, toggleSidebar]
+    static let closeTab = AppShortcut(key: "w", modifiers: .command)
+    static let all: [AppShortcut] = [newTerminal, openRepository, toggleSidebar, closeTab]
 }

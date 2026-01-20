@@ -34,7 +34,7 @@ build-app: build-ghostty-xcframework # Build the macOS app (Debug)
 	@cd $(CURRENT_MAKEFILE_DIR) && xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug build 2>&1 | xcsift
 
 run-app: build-app # Build then launch (Debug)
-	@settings="$$(xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug -showBuildSettings)"; \
-	build_dir="$$(echo "$$settings" | sed -n 's/^ *BUILT_PRODUCTS_DIR = //p' | head -n 1)"; \
-	product="$$(echo "$$settings" | sed -n 's/^ *FULL_PRODUCT_NAME = //p' | head -n 1)"; \
+	@settings="$$(xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug -showBuildSettings -json 2>/dev/null)"; \
+	build_dir="$$(echo "$$settings" | jq -r '.[0].buildSettings.BUILT_PRODUCTS_DIR')"; \
+	product="$$(echo "$$settings" | jq -r '.[0].buildSettings.FULL_PRODUCT_NAME')"; \
 	open "$$build_dir/$$product"

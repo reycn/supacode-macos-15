@@ -189,6 +189,14 @@ final class GhosttySurfaceView: NSView {
         lastBackingSize = backingSize
         let width = UInt32(max(1, Int(backingSize.width.rounded(.down))))
         let height = UInt32(max(1, Int(backingSize.height.rounded(.down))))
+        let currentSize = ghostty_surface_size(surface)
+        if currentSize.cell_width_px > 0, currentSize.cell_height_px > 0 {
+            let columns = Int(width) / max(1, Int(currentSize.cell_width_px))
+            let rows = Int(height) / max(1, Int(currentSize.cell_height_px))
+            if columns < 5 || rows < 2 {
+                return
+            }
+        }
         ghostty_surface_set_size(surface, width, height)
     }
 

@@ -66,6 +66,21 @@ jobs:
           </plist>
           EOF
           xcodebuild -exportArchive -archivePath build/supacode.xcarchive -exportPath build/export -exportOptionsPlist build/ExportOptions.plist 2>&1 | mise exec -- xcsift -qw
+      - name: Re-sign Sparkle framework
+        run: |
+          APP_PATH="$(find build/export -name "supacode.app" -maxdepth 3 -print -quit)"
+          SPARKLE="$APP_PATH/Contents/Frameworks/Sparkle.framework"
+          CODESIGN_ARGS="--force --options runtime --timestamp --sign $DEVELOPER_ID_IDENTITY"
+
+          codesign $CODESIGN_ARGS "$SPARKLE/Versions/B/XPCServices/Downloader.xpc"
+          codesign $CODESIGN_ARGS "$SPARKLE/Versions/B/XPCServices/Installer.xpc"
+          codesign $CODESIGN_ARGS "$SPARKLE/Versions/B/Updater.app"
+          codesign $CODESIGN_ARGS "$SPARKLE/Versions/B/Autoupdate"
+          codesign $CODESIGN_ARGS "$SPARKLE/Versions/B/Sparkle"
+          codesign $CODESIGN_ARGS "$SPARKLE"
+          codesign $CODESIGN_ARGS "$APP_PATH"
+
+          codesign --verify --deep --strict "$APP_PATH"
       - name: Notarize and staple
         run: |
           APP_PATH="$(find build/export -name "supacode.app" -maxdepth 3 -print -quit)"

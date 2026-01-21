@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: [self-hosted, macOS, ARM64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: curl https://mise.run | sh
+      - run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: make lint
+      - run: make build-app
+      - run: make test

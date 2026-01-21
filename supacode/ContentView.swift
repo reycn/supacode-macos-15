@@ -86,6 +86,13 @@ struct ContentView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
+        .alert(item: $repositoryStore.removeWorktreeError) { error in
+            Alert(
+                title: Text(error.title),
+                message: Text(error.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
         .focusedSceneValue(\.toggleSidebarAction, toggleSidebar)
     }
 
@@ -170,7 +177,9 @@ private struct SidebarView: View {
     let pendingWorktrees: [PendingWorktree]
     @Binding var selection: Worktree.ID?
     let createWorktree: (Repository) -> Void
+    @Environment(RepositoryStore.self) private var repositoryStore
     @State private var expandedRepoIDs: Set<Repository.ID>
+    @State private var pendingRemoval: PendingWorktreeRemoval?
 
     init(
         repositories: [Repository],
@@ -188,49 +197,69 @@ private struct SidebarView: View {
     }
 
     var body: some View {
+        SidebarListView(
+            repositories: repositories,
+            pendingWorktrees: pendingWorktrees,
+            selection: $selection,
+            expandedRepoIDs: $expandedRepoIDs,
+            createWorktree: createWorktree,
+            onRequestRemoval: requestRemoval
+        )
+        .focusedSceneValue(\.removeWorktreeAction, removeSelectedWorktree)
+        .alert(item: $pendingRemoval) { candidate in
+            Alert(
+                title: Text("Worktree has uncommitted changes"),
+                message: Text("Remove \(candidate.worktree.name)? This deletes the worktree directory and its branch."),
+                primaryButton: .destructive(Text("Remove anyway")) {
+                    Task {
+                        await repositoryStore.removeWorktree(candidate.worktree, from: candidate.repository, force: true)
+                    }
+                },
+                secondaryButton: .cancel()
+            )
+        }
+    }
+
+    private func requestRemoval(_ worktree: Worktree, in repository: Repository) {
+        Task {
+            let isDirty = await repositoryStore.isWorktreeDirty(worktree)
+            if isDirty {
+                pendingRemoval = PendingWorktreeRemoval(repository: repository, worktree: worktree)
+            } else {
+                await repositoryStore.removeWorktree(worktree, from: repository, force: false)
+            }
+        }
+    }
+
+    private func removeSelectedWorktree() {
+        guard let selection else { return }
+        for repository in repositories {
+            if let worktree = repository.worktrees.first(where: { $0.id == selection }) {
+                requestRemoval(worktree, in: repository)
+                return
+            }
+        }
+    }
+}
+
+private struct SidebarListView: View {
+    let repositories: [Repository]
+    let pendingWorktrees: [PendingWorktree]
+    @Binding var selection: Worktree.ID?
+    @Binding var expandedRepoIDs: Set<Repository.ID>
+    let createWorktree: (Repository) -> Void
+    let onRequestRemoval: (Worktree, Repository) -> Void
+
+    var body: some View {
         List(selection: $selection) {
             ForEach(repositories) { repository in
-                Section {
-                    if expandedRepoIDs.contains(repository.id) {
-                        ForEach(pendingWorktrees.filter { $0.repositoryID == repository.id }) { pendingWorktree in
-                            WorktreeRow(name: pendingWorktree.name, detail: pendingWorktree.detail, isLoading: true)
-                                .tag(pendingWorktree.id)
-                        }
-                        ForEach(repository.worktrees) { worktree in
-                            WorktreeRow(name: worktree.name, detail: worktree.detail, isLoading: false)
-                                .tag(worktree.id)
-                        }
-                    }
-                } header: {
-                    HStack {
-                        Button {
-                            if expandedRepoIDs.contains(repository.id) {
-                                expandedRepoIDs.remove(repository.id)
-                            } else {
-                                expandedRepoIDs.insert(repository.id)
-                            }
-                        } label: {
-                            RepoHeaderRow(
-                                name: repository.name,
-                                initials: repository.initials,
-                                profileURL: repository.githubOwner.flatMap {
-                                    Github.profilePictureURL(username: $0, size: 48)
-                                },
-                                isExpanded: expandedRepoIDs.contains(repository.id)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        Spacer()
-                        Button("New Worktree", systemImage: "plus") {
-                            createWorktree(repository)
-                        }
-                        .labelStyle(.iconOnly)
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.primary)
-                        .padding(.trailing, 6)
-                        .help("New Worktree (\(AppShortcuts.newWorktree.display))")
-                    }
-                }
+                RepositorySectionView(
+                    repository: repository,
+                    pendingWorktrees: pendingWorktrees,
+                    expandedRepoIDs: $expandedRepoIDs,
+                    createWorktree: createWorktree,
+                    onRequestRemoval: onRequestRemoval
+                )
             }
         }
         .listStyle(.sidebar)
@@ -244,6 +273,126 @@ private struct SidebarView: View {
             let repositoryIDs = Set(newValue.map(\.repositoryID))
             expandedRepoIDs.formUnion(repositoryIDs)
         }
+    }
+}
+
+private struct RepositorySectionView: View {
+    let repository: Repository
+    let pendingWorktrees: [PendingWorktree]
+    @Binding var expandedRepoIDs: Set<Repository.ID>
+    let createWorktree: (Repository) -> Void
+    let onRequestRemoval: (Worktree, Repository) -> Void
+
+    var body: some View {
+        let isExpanded = expandedRepoIDs.contains(repository.id)
+        Section {
+            WorktreeRowsView(
+                repository: repository,
+                pendingWorktrees: pendingWorktrees,
+                isExpanded: isExpanded,
+                onRequestRemoval: onRequestRemoval
+            )
+        } header: {
+            HStack {
+                Button {
+                    if expandedRepoIDs.contains(repository.id) {
+                        expandedRepoIDs.remove(repository.id)
+                    } else {
+                        expandedRepoIDs.insert(repository.id)
+                    }
+                } label: {
+                    RepoHeaderRow(
+                        name: repository.name,
+                        initials: repository.initials,
+                        profileURL: repository.githubOwner.flatMap {
+                            Github.profilePictureURL(username: $0, size: 48)
+                        },
+                        isExpanded: isExpanded
+                    )
+                }
+                .buttonStyle(.plain)
+                Spacer()
+                Button("New Worktree", systemImage: "plus") {
+                    createWorktree(repository)
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.plain)
+                .foregroundStyle(.primary)
+                .padding(.trailing, 6)
+                .help("New Worktree (\(AppShortcuts.newWorktree.display))")
+            }
+        }
+    }
+}
+
+private struct WorktreeRowsView: View {
+    let repository: Repository
+    let pendingWorktrees: [PendingWorktree]
+    let isExpanded: Bool
+    let onRequestRemoval: (Worktree, Repository) -> Void
+    @Environment(RepositoryStore.self) private var repositoryStore
+
+    var body: some View {
+        if isExpanded {
+            let orderedWorktrees = repositoryStore.orderedWorktrees(in: repository)
+            let pinnedWorktrees = orderedWorktrees.filter { repositoryStore.isWorktreePinned($0) }
+            let unpinnedWorktrees = orderedWorktrees.filter { !repositoryStore.isWorktreePinned($0) }
+            let pendingEntries = pendingWorktrees.filter { $0.repositoryID == repository.id }
+            ForEach(pinnedWorktrees) { worktree in
+                worktreeRow(worktree, isPinned: true)
+            }
+            ForEach(pendingEntries) { pendingWorktree in
+                WorktreeRow(
+                    name: pendingWorktree.name,
+                    detail: pendingWorktree.detail,
+                    isPinned: false,
+                    isLoading: true
+                )
+                .tag(pendingWorktree.id)
+            }
+            ForEach(unpinnedWorktrees) { worktree in
+                worktreeRow(worktree, isPinned: false)
+            }
+        }
+    }
+
+    private func worktreeRow(_ worktree: Worktree, isPinned: Bool) -> some View {
+        WorktreeRow(
+            name: worktree.name,
+            detail: worktree.detail,
+            isPinned: isPinned,
+            isLoading: false
+        )
+        .tag(worktree.id)
+        .contextMenu {
+            if isPinned {
+                Button("Unpin") {
+                    repositoryStore.unpinWorktree(worktree)
+                }
+                .help("Unpin (no shortcut)")
+            } else {
+                Button("Pin to top") {
+                    repositoryStore.pinWorktree(worktree)
+                }
+                .help("Pin to top (no shortcut)")
+            }
+            Button("Remove") {
+                onRequestRemoval(worktree, repository)
+            }
+            .help("Remove worktree (⌘⌫)")
+        }
+    }
+}
+
+private struct PendingWorktreeRemoval: Identifiable, Hashable {
+    let id: Worktree.ID
+    let repository: Repository
+    let worktree: Worktree
+
+    init(repository: Repository, worktree: Worktree) {
+        self.id = worktree.id
+        self.repository = repository
+        self.worktree = worktree
     }
 }
 
@@ -288,6 +437,7 @@ private struct RepoHeaderRow: View {
 private struct WorktreeRow: View {
     let name: String
     let detail: String
+    let isPinned: Bool
     let isLoading: Bool
 
     var body: some View {
@@ -308,6 +458,12 @@ private struct WorktreeRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .opacity(detail.isEmpty ? 0 : 1)
+            }
+            Spacer(minLength: 8)
+            if isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }

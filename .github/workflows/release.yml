@@ -133,16 +133,27 @@ jobs:
           SPARKLE_KEY_B64=$(python3 - <<'PY'
           import os, base64, re, binascii, sys
           key = os.environ.get("SPARKLE_PRIVATE_KEY", "")
-          key = key.strip().replace("\n", "").replace("\r", "")
+          key = key.strip()
+          if "BEGIN" in key:
+              key = re.sub(r"-----BEGIN[^-]*-----", "", key)
+              key = re.sub(r"-----END[^-]*-----", "", key)
+          key = re.sub(r"\s+", "", key)
           if not key:
               sys.exit("SPARKLE_PRIVATE_KEY is empty")
           if re.fullmatch(r"[0-9a-fA-F]{128}", key):
               raw = binascii.unhexlify(key)
               print(base64.b64encode(raw).decode())
               sys.exit(0)
-          try:
-              raw = base64.b64decode(key, validate=True)
-          except Exception:
+          def decode_b64(value):
+              value = value.replace("-", "+").replace("_", "/")
+              if len(value) % 4:
+                  value += "=" * (4 - (len(value) % 4))
+              try:
+                  return base64.b64decode(value, validate=True)
+              except Exception:
+                  return None
+          raw = decode_b64(key)
+          if raw is None:
               sys.exit("SPARKLE_PRIVATE_KEY is not valid base64 or hex")
           if len(raw) not in (32, 64):
               sys.exit(f"SPARKLE_PRIVATE_KEY decoded length {len(raw)} is not 32 or 64")

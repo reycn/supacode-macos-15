@@ -69,6 +69,11 @@ Always read `./docs/swift-rules.md` before writing Swift code. Key points:
 - Use Peekabo skill to verify UI behavior if necessary
 - To inspect a Swift PM package, clone it with `gj get {git_url}`
 
+## Releases
+
+- When making new releases use `make bump-version VERSION=x.x.x` to bump Info.plist version
+- Tagging `vx.x.x` and push will trigger prod build automatically by Github action
+
 ## References
 
 - `git@github.com:ghostty-org/ghostty.git` - Dive into this codebase when implementing Ghostty features

@@ -12,7 +12,7 @@ CURRENT_MAKEFILE_DIR := $(patsubst %/,%,$(dir $(CURRENT_MAKEFILE_PATH)))
 GHOSTTY_XCFRAMEWORK_PATH := $(CURRENT_MAKEFILE_DIR)/Frameworks/GhosttyKit.xcframework
 
 .DEFAULT_GOAL := help
-.PHONY: serve build-ghostty-xcframework build-app run-app install-dev-build sync-ghostty-resources lint test update-wt
+.PHONY: serve build-ghostty-xcframework build-app run-app install-dev-build sync-ghostty-resources lint test update-wt bump-version
 
 help:  # Display this help.
 	@-+echo "Run make with one of the following targets:"
@@ -76,3 +76,16 @@ update-wt: # Download git-wt binary to Resources
 	@mkdir -p "$(CURRENT_MAKEFILE_DIR)/supacode/Resources/git-wt"
 	@curl -fsSL "https://raw.githubusercontent.com/khoi/git-wt/refs/heads/main/wt" -o "$(CURRENT_MAKEFILE_DIR)/supacode/Resources/git-wt/wt"
 	@chmod +x "$(CURRENT_MAKEFILE_DIR)/supacode/Resources/git-wt/wt"
+
+bump-version: # Bump app version (usage: make bump-version VERSION=x.x.x)
+	@if [ -z "$(VERSION)" ]; then \
+		echo "error: VERSION required (e.g., make bump-version VERSION=1.2.3)"; \
+		exit 1; \
+	fi; \
+	if ! echo "$(VERSION)" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$$'; then \
+		echo "error: VERSION must be in x.x.x format"; \
+		exit 1; \
+	fi; \
+	sed -i '' 's/MARKETING_VERSION = [0-9.]*;/MARKETING_VERSION = $(VERSION);/g' \
+		"$(CURRENT_MAKEFILE_DIR)/supacode.xcodeproj/project.pbxproj"; \
+	echo "version bumped to $(VERSION)"

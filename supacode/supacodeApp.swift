@@ -22,13 +22,14 @@ private enum GhosttyCLI {
 }
 
 @main
+@MainActor
 struct SupacodeApp: App {
   @State private var ghostty: GhosttyRuntime
   @State private var settings = SettingsModel()
-  @State private var repositoryStore = RepositoryStore()
+  @State private var repositoryStore: RepositoryStore
   @State private var updateController: UpdateController
 
-  init() {
+  @MainActor init() {
     if let resourceURL = Bundle.main.resourceURL?.appendingPathComponent("ghostty") {
       setenv("GHOSTTY_RESOURCES_DIR", resourceURL.path, 1)
     }
@@ -42,6 +43,7 @@ struct SupacodeApp: App {
     _ghostty = State(initialValue: GhosttyRuntime())
     let settingsModel = SettingsModel()
     _settings = State(initialValue: settingsModel)
+    _repositoryStore = State(initialValue: makeRepositoryStore())
     _updateController = State(initialValue: UpdateController(settings: settingsModel))
   }
 
@@ -50,9 +52,9 @@ struct SupacodeApp: App {
       ContentView(runtime: ghostty)
         .environment(settings)
         .environment(updateController)
+        .environment(repositoryStore)
         .preferredColorScheme(settings.preferredColorScheme)
     }
-    .environment(repositoryStore)
     .commands {
       OpenRepositoryCommands(repositoryStore: repositoryStore)
       WorktreeCommands(repositoryStore: repositoryStore)
@@ -64,7 +66,7 @@ struct SupacodeApp: App {
       SettingsView()
         .environment(settings)
         .environment(updateController)
+        .environment(repositoryStore)
     }
-    .environment(repositoryStore)
   }
 }

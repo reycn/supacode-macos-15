@@ -146,6 +146,7 @@ final class GhosttyRuntime {
       Task { @MainActor in
         runtime.updateConfig(config)
         runtime.onConfigChange?()
+        NotificationCenter.default.post(name: .ghosttyRuntimeConfigDidChange, object: runtime)
       }
     }
     guard target.tag == GHOSTTY_TARGET_SURFACE else { return false }
@@ -255,6 +256,21 @@ final class GhosttyRuntime {
     return true
   }
 
+  func scrollbarAppearanceName() -> NSAppearance.Name {
+    let backgroundColor = backgroundColorFromConfig() ?? NSColor.windowBackgroundColor
+    return backgroundColor.isLightColor ? .aqua : .darkAqua
+  }
+
+  private func backgroundColorFromConfig() -> NSColor? {
+    guard let config else { return nil }
+    var color: ghostty_config_color_s = .init()
+    let key = "background"
+    if !ghostty_config_get(config, &color, key, UInt(key.lengthOfBytes(using: .utf8))) {
+      return nil
+    }
+    return NSColor(ghostty: color)
+  }
+
   private static func keyboardShortcut(for trigger: ghostty_input_trigger_s) -> KeyboardShortcut? {
     let key: KeyEquivalent
     switch trigger.tag {
@@ -297,6 +313,33 @@ final class GhosttyRuntime {
     GHOSTTY_KEY_BACKSPACE: .delete,
     GHOSTTY_KEY_SPACE: .space,
   ]
+}
+
+extension Notification.Name {
+  static let ghosttyRuntimeConfigDidChange = Notification.Name("ghosttyRuntimeConfigDidChange")
+}
+
+private extension NSColor {
+  var isLightColor: Bool {
+    luminance > 0.5
+  }
+
+  var luminance: Double {
+    var red: CGFloat = 0
+    var green: CGFloat = 0
+    var blue: CGFloat = 0
+    var alpha: CGFloat = 0
+    guard let rgb = usingColorSpace(.sRGB) else { return 0 }
+    rgb.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+    return (0.299 * red) + (0.587 * green) + (0.114 * blue)
+  }
+
+  convenience init(ghostty: ghostty_config_color_s) {
+    let red = Double(ghostty.r) / 255
+    let green = Double(ghostty.g) / 255
+    let blue = Double(ghostty.b) / 255
+    self.init(red: red, green: green, blue: blue, alpha: 1)
+  }
 }
 
 extension NSPasteboard.PasteboardType {

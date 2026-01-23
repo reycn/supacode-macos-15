@@ -21,7 +21,7 @@ help:  # Display this help.
 	@-+echo
 	@-+grep -Eh "^[a-z-]+:.*#" $(CURRENT_MAKEFILE_PATH) | sed -E 's/^(.*:)(.*#+)(.*)/  \1 @@@ \3 /' | column -t -s "@@@"
 
-build-ghostty-xcframework: $(GHOSTTY_XCFRAMEWORK_PATH) # Build ghostty framework
+build-ghostty-xcframework: $(GHOSTTY_XCFRAMEWORK_PATH) sync-ghostty-resources # Build ghostty framework
 
 $(GHOSTTY_XCFRAMEWORK_PATH):
 	git submodule update --init --recursive

@@ -1,4 +1,6 @@
 import AppKit
+import Carbon
+import CoreText
 import GhosttyKit
 
 final class GhosttySurfaceView: NSView, Identifiable {
@@ -141,8 +143,12 @@ final class GhosttySurfaceView: NSView, Identifiable {
     keyTextAccumulator = []
     defer { keyTextAccumulator = nil }
     let markedTextBefore = markedText.length > 0
+    let keyboardIdBefore = markedTextBefore ? nil : keyboardLayoutId()
     lastPerformKeyEvent = nil
     interpretKeyEvents([translationEvent])
+    if !markedTextBefore, keyboardIdBefore != keyboardLayoutId() {
+      return
+    }
     syncPreedit(clearIfNeeded: markedTextBefore)
     if let list = keyTextAccumulator, !list.isEmpty {
       for text in list {
@@ -231,11 +237,27 @@ final class GhosttySurfaceView: NSView, Identifiable {
   }
 
   override func rightMouseDown(with event: NSEvent) {
-    sendMouseButton(event, state: GHOSTTY_MOUSE_PRESS, button: GHOSTTY_MOUSE_RIGHT)
+    guard let surface else {
+      super.rightMouseDown(with: event)
+      return
+    }
+    let mods = ghosttyMods(event.modifierFlags)
+    if ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_PRESS, GHOSTTY_MOUSE_RIGHT, mods) {
+      return
+    }
+    super.rightMouseDown(with: event)
   }
 
   override func rightMouseUp(with event: NSEvent) {
-    sendMouseButton(event, state: GHOSTTY_MOUSE_RELEASE, button: GHOSTTY_MOUSE_RIGHT)
+    guard let surface else {
+      super.rightMouseUp(with: event)
+      return
+    }
+    let mods = ghosttyMods(event.modifierFlags)
+    if ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_RELEASE, GHOSTTY_MOUSE_RIGHT, mods) {
+      return
+    }
+    super.rightMouseUp(with: event)
   }
 
   override func otherMouseDown(with event: NSEvent) {
@@ -305,6 +327,10 @@ final class GhosttySurfaceView: NSView, Identifiable {
 
   func shouldShowScrollbar() -> Bool {
     runtime.shouldShowScrollbar()
+  }
+
+  func scrollbarAppearanceName() -> NSAppearance.Name {
+    runtime.scrollbarAppearanceName()
   }
 
   func setMouseShape(_ shape: ghostty_action_mouse_shape_e) {
@@ -531,6 +557,100 @@ final class GhosttySurfaceView: NSView, Identifiable {
     }
   }
 
+  override func menu(for event: NSEvent) -> NSMenu? {
+    switch event.type {
+    case .rightMouseDown:
+      break
+    case .leftMouseDown:
+      if !event.modifierFlags.contains(.control) {
+        return nil
+      }
+      guard let surface else { return nil }
+      if ghostty_surface_mouse_captured(surface) {
+        return nil
+      }
+      let mods = ghosttyMods(event.modifierFlags)
+      _ = ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_PRESS, GHOSTTY_MOUSE_RIGHT, mods)
+    default:
+      return nil
+    }
+
+    guard let surface else { return nil }
+    if ghostty_surface_mouse_captured(surface) {
+      return nil
+    }
+
+    let menu = NSMenu()
+    if ghostty_surface_has_selection(surface) {
+      menu.addItem(NSMenuItem(title: "Copy", action: #selector(copy(_:)), keyEquivalent: ""))
+    }
+    menu.addItem(NSMenuItem(title: "Paste", action: #selector(paste(_:)), keyEquivalent: ""))
+    menu.addItem(.separator())
+    menu.addItem(menuItem(
+      title: "Split Right",
+      action: #selector(splitRight(_:)),
+      symbol: "rectangle.righthalf.inset.filled"
+    ))
+    menu.addItem(menuItem(
+      title: "Split Left",
+      action: #selector(splitLeft(_:)),
+      symbol: "rectangle.leadinghalf.inset.filled"
+    ))
+    menu.addItem(menuItem(
+      title: "Split Down",
+      action: #selector(splitDown(_:)),
+      symbol: "rectangle.bottomhalf.inset.filled"
+    ))
+    menu.addItem(menuItem(
+      title: "Split Up",
+      action: #selector(splitUp(_:)),
+      symbol: "rectangle.tophalf.inset.filled"
+    ))
+    menu.addItem(.separator())
+    menu.addItem(menuItem(
+      title: "Reset Terminal",
+      action: #selector(resetTerminal(_:)),
+      symbol: "arrow.trianglehead.2.clockwise"
+    ))
+    menu.addItem(.separator())
+    menu.addItem(menuItem(
+      title: "Change Title...",
+      action: #selector(changeTitle(_:)),
+      symbol: "pencil.line"
+    ))
+    return menu
+  }
+
+  private func menuItem(title: String, action: Selector, symbol: String) -> NSMenuItem {
+    let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+    item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+    return item
+  }
+
+  @IBAction func splitRight(_ sender: Any?) {
+    _ = bridge.onSplitAction?(.newSplit(direction: .right))
+  }
+
+  @IBAction func splitLeft(_ sender: Any?) {
+    _ = bridge.onSplitAction?(.newSplit(direction: .left))
+  }
+
+  @IBAction func splitDown(_ sender: Any?) {
+    _ = bridge.onSplitAction?(.newSplit(direction: .down))
+  }
+
+  @IBAction func splitUp(_ sender: Any?) {
+    _ = bridge.onSplitAction?(.newSplit(direction: .top))
+  }
+
+  @IBAction func resetTerminal(_ sender: Any?) {
+    performBindingAction("reset")
+  }
+
+  @IBAction func changeTitle(_ sender: Any?) {
+    performBindingAction("prompt_surface_title")
+  }
+
   private func shouldAttemptMenu(for flags: ghostty_binding_flags_e) -> Bool {
     if bridge.state.keySequenceActive == true { return false }
     if bridge.state.keyTableDepth > 0 { return false }
@@ -716,6 +836,17 @@ final class GhosttySurfaceView: NSView, Identifiable {
     return ghostty_input_scroll_mods_t(value)
   }
 
+  private func keyboardLayoutId() -> String? {
+    guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue() else {
+      return nil
+    }
+    guard let raw = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) else {
+      return nil
+    }
+    let value = Unmanaged<CFString>.fromOpaque(raw).takeUnretainedValue()
+    return value as String
+  }
+
   private func sendMousePosition(_ event: NSEvent) {
     guard let surface else { return }
     let point = convert(event.locationInWindow, from: nil)
@@ -813,7 +944,13 @@ extension GhosttySurfaceView: NSTextInputClient {
     var text = ghostty_text_s()
     guard ghostty_surface_read_selection(surface, &text) else { return nil }
     defer { ghostty_surface_free_text(surface, &text) }
-    return NSAttributedString(string: String(cString: text.text))
+    var attributes: [NSAttributedString.Key: Any] = [:]
+    if let fontRaw = ghostty_surface_quicklook_font(surface) {
+      let font = Unmanaged<CTFont>.fromOpaque(fontRaw)
+      attributes[.font] = font.takeUnretainedValue()
+      font.release()
+    }
+    return NSAttributedString(string: String(cString: text.text), attributes: attributes)
   }
 
   func characterIndex(for point: NSPoint) -> Int {
@@ -828,7 +965,18 @@ extension GhosttySurfaceView: NSTextInputClient {
     var caretY: Double = 0
     var width: Double = cellSize.width
     var height: Double = cellSize.height
-    ghostty_surface_ime_point(surface, &caretX, &caretY, &width, &height)
+    if range.length > 0, range != selectedRange() {
+      var text = ghostty_text_s()
+      if ghostty_surface_read_selection(surface, &text) {
+        caretX = text.tl_px_x - 2
+        caretY = text.tl_px_y + 2
+        ghostty_surface_free_text(surface, &text)
+      } else {
+        ghostty_surface_ime_point(surface, &caretX, &caretY, &width, &height)
+      }
+    } else {
+      ghostty_surface_ime_point(surface, &caretX, &caretY, &width, &height)
+    }
     if range.length == 0, width > 0 {
       width = 0
       caretX += cellSize.width * Double(range.location + range.length)
@@ -888,7 +1036,6 @@ final class GhosttySurfaceScrollView: NSView {
   init(surfaceView: GhosttySurfaceView) {
     self.surfaceView = surfaceView
     scrollView = NSScrollView()
-    scrollView.hasVerticalScroller = surfaceView.shouldShowScrollbar()
     scrollView.hasHorizontalScroller = false
     scrollView.autohidesScrollers = false
     scrollView.usesPredominantAxisScrolling = true
@@ -901,6 +1048,7 @@ final class GhosttySurfaceScrollView: NSView {
     super.init(frame: .zero)
     addSubview(scrollView)
     surfaceView.scrollWrapper = self
+    refreshAppearance()
 
     scrollView.contentView.postsBoundsChangedNotifications = true
     observers.append(NotificationCenter.default.addObserver(
@@ -942,6 +1090,14 @@ final class GhosttySurfaceScrollView: NSView {
     ) { [weak self] _ in
       self?.handleScrollerStyleChange()
     })
+
+    observers.append(NotificationCenter.default.addObserver(
+      forName: .ghosttyRuntimeConfigDidChange,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      self?.refreshAppearance()
+    })
   }
 
   required init?(coder: NSCoder) {
@@ -972,12 +1128,19 @@ final class GhosttySurfaceScrollView: NSView {
     synchronizeScrollView()
   }
 
+  func refreshAppearance() {
+    scrollView.hasVerticalScroller = surfaceView.shouldShowScrollbar()
+    scrollView.appearance = NSAppearance(named: surfaceView.scrollbarAppearanceName())
+    scrollView.scrollerStyle = .overlay
+    updateTrackingAreas()
+  }
+
   private func handleScrollChange() {
     synchronizeSurfaceView()
   }
 
   private func handleScrollerStyleChange() {
-    scrollView.scrollerStyle = .overlay
+    refreshAppearance()
     surfaceView.updateSurfaceSize()
   }
 

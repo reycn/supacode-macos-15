@@ -10,8 +10,8 @@ MAKEFLAGS += --no-builtin-rules
 CURRENT_MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 CURRENT_MAKEFILE_DIR := $(patsubst %/,%,$(dir $(CURRENT_MAKEFILE_PATH)))
 GHOSTTY_XCFRAMEWORK_PATH := $(CURRENT_MAKEFILE_DIR)/Frameworks/GhosttyKit.xcframework
-GHOSTTY_RESOURCE_PATH := $(CURRENT_MAKEFILE_DIR)/ThirdParty/ghostty/zig-out/share/ghostty
-GHOSTTY_TERMINFO_PATH := $(CURRENT_MAKEFILE_DIR)/ThirdParty/ghostty/zig-out/share/terminfo
+GHOSTTY_RESOURCE_PATH := $(CURRENT_MAKEFILE_DIR)/Resources/ghostty
+GHOSTTY_TERMINFO_PATH := $(CURRENT_MAKEFILE_DIR)/Resources/terminfo
 GHOSTTY_BUILD_OUTPUTS := $(GHOSTTY_XCFRAMEWORK_PATH) $(GHOSTTY_RESOURCE_PATH) $(GHOSTTY_TERMINFO_PATH)
 VERSION ?=
 BUILD ?=
@@ -24,29 +24,17 @@ help:  # Display this help.
 	@-+echo
 	@-+grep -Eh "^[a-z-]+:.*#" $(CURRENT_MAKEFILE_PATH) | sed -E 's/^(.*:)(.*#+)(.*)/  \1 @@@ \3 /' | column -t -s "@@@"
 
-build-ghostty-xcframework: $(GHOSTTY_BUILD_OUTPUTS) sync-ghostty-resources # Build ghostty framework
+build-ghostty-xcframework: $(GHOSTTY_BUILD_OUTPUTS) # Build ghostty framework
 
 $(GHOSTTY_BUILD_OUTPUTS):
 	git submodule update --init --recursive
 	mise install
 	@cd $(CURRENT_MAKEFILE_DIR)/ThirdParty/ghostty && mise exec -- zig build -Doptimize=ReleaseFast -Demit-xcframework=true -Dsentry=false
 	rsync -a ThirdParty/ghostty/macos/GhosttyKit.xcframework Frameworks
-
-sync-ghostty-resources:
 	@src="$(GHOSTTY_RESOURCE_PATH)"; \
 	dst="$(CURRENT_MAKEFILE_DIR)/Resources/ghostty"; \
 	terminfo_src="$(GHOSTTY_TERMINFO_PATH)"; \
 	terminfo_dst="$(CURRENT_MAKEFILE_DIR)/Resources/terminfo"; \
-	if [ ! -d "$$src" ]; then \
-		echo "ghostty resources not found: $$src"; \
-		echo "run: make build-ghostty-xcframework"; \
-		exit 1; \
-	fi; \
-	if [ ! -d "$$terminfo_src" ]; then \
-		echo "ghostty terminfo not found: $$terminfo_src"; \
-		echo "run: make build-ghostty-xcframework"; \
-		exit 1; \
-	fi; \
 	mkdir -p "$$dst"; \
 	rsync -a --delete "$$src/" "$$dst/"; \
 	mkdir -p "$$terminfo_dst"; \

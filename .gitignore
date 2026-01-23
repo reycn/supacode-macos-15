@@ -63,5 +63,7 @@ fastlane/screenshots/**/*.png
 fastlane/test_output
 
 Frameworks/GhosttyKit.xcframework
+Resources/ghostty
+Resources/terminfo
 *.profraw
 .env

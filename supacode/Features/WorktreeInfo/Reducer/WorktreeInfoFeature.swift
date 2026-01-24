@@ -145,8 +145,16 @@ nonisolated private func loadWorktreeInfoSnapshot(
 
   var githubError: String?
   var ciError: String?
-  let githubAvailable = await githubCLI.isAvailable()
-  if !githubAvailable {
+  let originRemote = (try? await runGit(
+    ["config", "--get", "remote.origin.url"],
+    in: repoRoot,
+    shellClient: shellClient
+  ))?.trimmingCharacters(in: .whitespacesAndNewlines)
+  let isGitHubRepo = isGitHubRemote(originRemote)
+  let githubAvailable = isGitHubRepo ? await githubCLI.isAvailable() : false
+  if !isGitHubRepo {
+    githubError = "Not a GitHub repository"
+  } else if !githubAvailable {
     githubError = GithubCLIError.unavailable.errorDescription
   }
 
@@ -373,4 +381,9 @@ nonisolated private func gitRefExists(
   } catch {
     return false
   }
+}
+
+nonisolated private func isGitHubRemote(_ remote: String?) -> Bool {
+  guard let remote else { return false }
+  return remote.contains("github.com")
 }

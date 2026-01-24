@@ -97,7 +97,7 @@ struct WorktreeInfoView: View {
             }
 
             if let nextRefresh = state.nextRefresh {
-              LabeledContent("Next refresh") {
+              LabeledContent("Next periodic refresh") {
                 Text(nextRefresh, style: .relative)
               }
               .foregroundStyle(.secondary)

@@ -6,6 +6,7 @@ struct AppFeature {
   @ObservableState
   struct State: Equatable {
     var repositories: RepositoriesFeature.State
+    var worktreeInfo = WorktreeInfoFeature.State()
     var settings: SettingsFeature.State
     var updates = UpdatesFeature.State()
     var openActionSelection: OpenWorktreeAction = .finder
@@ -25,6 +26,7 @@ struct AppFeature {
     case task
     case scenePhaseChanged(ScenePhase)
     case repositories(RepositoriesFeature.Action)
+    case worktreeInfo(WorktreeInfoFeature.Action)
     case settings(SettingsFeature.Action)
     case updates(UpdatesFeature.Action)
     case openActionSelectionChanged(OpenWorktreeAction)
@@ -51,27 +53,38 @@ struct AppFeature {
       case .task:
         return .merge(
           .send(.repositories(.task)),
-          .send(.settings(.task))
+          .send(.settings(.task)),
+          .send(.worktreeInfo(.task))
         )
 
       case .scenePhaseChanged(let phase):
         guard phase == .active else { return .none }
-        return .send(.repositories(.loadPersistedRepositories))
+        return .merge(
+          .send(.repositories(.loadPersistedRepositories)),
+          .send(.worktreeInfo(.appBecameActive))
+        )
 
       case .repositories(.delegate(.selectedWorktreeChanged(let worktree))):
         guard let worktree else {
           state.openActionSelection = .finder
-          return .none
+          return .send(.worktreeInfo(.worktreeChanged(nil)))
         }
         let settings = repositorySettingsClient.load(worktree.repositoryRootURL)
         state.openActionSelection = OpenWorktreeAction.fromSettingsID(settings.openActionID)
-        return .none
+        return .send(.worktreeInfo(.worktreeChanged(worktree)))
 
       case .repositories(.delegate(.repositoriesChanged(let repositories))):
         let ids = Set(repositories.flatMap { $0.worktrees.map(\.id) })
         return .run { _ in
           await terminalClient.prune(ids)
         }
+
+      case .repositories(.delegate(.repositoryChanged(let repositoryID))):
+        if let selected = state.repositories.worktree(for: state.repositories.selectedWorktreeID),
+           selected.repositoryRootURL.path(percentEncoded: false) == repositoryID {
+          return .send(.worktreeInfo(.refresh))
+        }
+        return .none
 
       case .settings(.delegate(.settingsChanged(let settings))):
         let checkInBackground = !state.didConfigureUpdates
@@ -155,6 +168,9 @@ struct AppFeature {
       case .repositories:
         return .none
 
+      case .worktreeInfo:
+        return .none
+
       case .settings:
         return .none
 
@@ -165,6 +181,9 @@ struct AppFeature {
     ._printChanges()
     Scope(state: \.repositories, action: \.repositories) {
       RepositoriesFeature()
+    }
+    Scope(state: \.worktreeInfo, action: \.worktreeInfo) {
+      WorktreeInfoFeature()
     }
     Scope(state: \.settings, action: \.settings) {
       SettingsFeature()

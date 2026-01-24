@@ -22,10 +22,13 @@ struct ContentView: View {
 
   var body: some View {
     let repositoriesStore = store.scope(state: \.repositories, action: \.repositories)
+    let worktreeInfoStore = store.scope(state: \.worktreeInfo, action: \.worktreeInfo)
     NavigationSplitView(columnVisibility: $sidebarVisibility) {
       SidebarView(store: repositoriesStore, terminalManager: terminalManager)
-    } detail: {
+    } content: {
       WorktreeDetailView(store: store, terminalManager: terminalManager)
+    } detail: {
+      WorktreeInfoView(store: worktreeInfoStore)
     }
     .navigationSplitViewStyle(.balanced)
     .task {
@@ -63,7 +66,7 @@ struct ContentView: View {
 
   private func toggleSidebar() {
     withAnimation(.easeInOut(duration: 0.2)) {
-      sidebarVisibility = sidebarVisibility == .detailOnly ? .all : .detailOnly
+      sidebarVisibility = sidebarVisibility == .doubleColumn ? .all : .doubleColumn
     }
   }
 }

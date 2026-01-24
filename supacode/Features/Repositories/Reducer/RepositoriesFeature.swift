@@ -77,6 +77,7 @@ struct RepositoriesFeature {
   enum Delegate: Equatable {
     case selectedWorktreeChanged(Worktree?)
     case repositoriesChanged([Repository])
+    case repositoryChanged(Repository.ID)
   }
 
   @Dependency(\.gitClient) private var gitClient
@@ -480,8 +481,11 @@ struct RepositoriesFeature {
         repositoryPersistence.savePinnedWorktreeIDs(state.pinnedWorktreeIDs)
         return .none
 
-      case .repositoryChangeDetected:
-        return .send(.scheduleReload(animated: true))
+      case .repositoryChangeDetected(let repositoryID):
+        return .merge(
+          .send(.scheduleReload(animated: true)),
+          .send(.delegate(.repositoryChanged(repositoryID)))
+        )
 
       case .scheduleReload(let animated):
         let roots = state.repositories.map(\.rootURL)

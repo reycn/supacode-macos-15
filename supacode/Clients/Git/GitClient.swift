@@ -1,4 +1,3 @@
-import Darwin
 import Foundation
 
 enum GitClientError: LocalizedError {
@@ -20,6 +19,12 @@ struct GitClient {
     let worktree: Worktree
     let createdAt: Date
     let index: Int
+  }
+
+  private let shell: ShellClient
+
+  init(shell: ShellClient = .liveValue) {
+    self.shell = shell
   }
 
   nonisolated func repoRoot(for path: URL) async throws -> URL {
@@ -150,11 +155,12 @@ struct GitClient {
 
   nonisolated private func runGit(arguments: [String]) async throws -> String {
     let env = URL(fileURLWithPath: "/usr/bin/env")
-    return try await runProcess(
-      executableURL: env,
-      arguments: ["git"] + arguments,
-      currentDirectoryURL: nil
-    )
+    let command = ([env.path(percentEncoded: false)] + ["git"] + arguments).joined(separator: " ")
+    do {
+      return try await shell.run(env, ["git"] + arguments, nil).stdout
+    } catch {
+      throw wrapShellError(error, command: command)
+    }
   }
 
   nonisolated private func runWtList(repoRoot: URL) async throws -> String {
@@ -187,90 +193,17 @@ struct GitClient {
     return trimmed.isEmpty ? nil : trimmed
   }
 
-  nonisolated private func runProcess(
-    executableURL: URL,
-    arguments: [String],
-    currentDirectoryURL: URL?
-  ) async throws -> String {
-    try await Task.detached {
-      let process = Process()
-      process.executableURL = executableURL
-      process.arguments = arguments
-      process.currentDirectoryURL = currentDirectoryURL
-      let outputPipe = Pipe()
-      let errorPipe = Pipe()
-      process.standardOutput = outputPipe
-      process.standardError = errorPipe
-      try process.run()
-      process.waitUntilExit()
-      let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-      let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-      let output = (String(bytes: outputData, encoding: .utf8) ?? "")
-        .trimmingCharacters(in: .whitespacesAndNewlines)
-      let errorOutput = (String(bytes: errorData, encoding: .utf8) ?? "")
-        .trimmingCharacters(in: .whitespacesAndNewlines)
-      if process.terminationStatus != 0 {
-        let command = ([executableURL.path(percentEncoded: false)] + arguments).joined(
-          separator: " ")
-        var messageParts: [String] = []
-        if !output.isEmpty {
-          messageParts.append("stdout:\n\(output)")
-        }
-        if !errorOutput.isEmpty {
-          messageParts.append("stderr:\n\(errorOutput)")
-        }
-        let message = messageParts.joined(separator: "\n")
-        throw GitClientError.commandFailed(command: command, message: message)
-      }
-      return output
-    }.value
-  }
-
   nonisolated private func runLoginShellProcess(
     executableURL: URL,
     arguments: [String],
     currentDirectoryURL: URL?
   ) async throws -> String {
-    let shellPath = defaultShellPath()
-    let shellURL = URL(fileURLWithPath: shellPath)
-    let execCommand = shellExecCommand(for: shellURL)
-    let shellArguments =
-      ["-l", "-c", execCommand, "--", executableURL.path(percentEncoded: false)] + arguments
-    return try await runProcess(
-      executableURL: shellURL,
-      arguments: shellArguments,
-      currentDirectoryURL: currentDirectoryURL
-    )
-  }
-
-  nonisolated private func shellExecCommand(for shellURL: URL) -> String {
-    switch shellURL.lastPathComponent {
-    case "fish":
-      return "exec $argv"
-    default:
-      return "exec \"$@\""
+    let command = ([executableURL.path(percentEncoded: false)] + arguments).joined(separator: " ")
+    do {
+      return try await shell.runLogin(executableURL, arguments, currentDirectoryURL).stdout
+    } catch {
+      throw wrapShellError(error, command: command)
     }
-  }
-
-  nonisolated private func defaultShellPath() -> String {
-    if let env = ProcessInfo.processInfo.environment["SHELL"], !env.isEmpty {
-      return env
-    }
-
-    var pwd = passwd()
-    var result: UnsafeMutablePointer<passwd>?
-    let bufSize = sysconf(_SC_GETPW_R_SIZE_MAX)
-    let size = bufSize > 0 ? Int(bufSize) : 1024
-    var buffer = [CChar](repeating: 0, count: size)
-    let lookup = getpwuid_r(getuid(), &pwd, &buffer, buffer.count, &result)
-    if lookup == 0, let result, let shell = result.pointee.pw_shell {
-      let value = String(cString: shell)
-      if !value.isEmpty {
-        return value
-      }
-    }
-
-    return "/bin/zsh"
   }
 
   nonisolated private static func relativePath(from base: URL, to target: URL) -> String {
@@ -318,6 +251,21 @@ struct GitClient {
     guard let owner = components.first, !owner.isEmpty else { return nil }
     return String(owner)
   }
+}
+
+nonisolated private func wrapShellError(_ error: Error, command: String) -> GitClientError {
+  if let shellError = error as? ShellClientError {
+    var messageParts: [String] = []
+    if !shellError.stdout.isEmpty {
+      messageParts.append("stdout:\n\(shellError.stdout)")
+    }
+    if !shellError.stderr.isEmpty {
+      messageParts.append("stderr:\n\(shellError.stderr)")
+    }
+    let message = messageParts.joined(separator: "\n")
+    return .commandFailed(command: command, message: message)
+  }
+  return .commandFailed(command: command, message: error.localizedDescription)
 }
 
 struct GitWtWorktreeEntry: Decodable {

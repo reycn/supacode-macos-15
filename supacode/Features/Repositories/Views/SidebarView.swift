@@ -16,7 +16,7 @@ struct SidebarView: View {
     let state = store.state
     let selectedRow = state.selectedRow(for: state.selectedWorktreeID)
     let removeWorktreeAction: (() -> Void)? = {
-      guard let selectedRow, selectedRow.isRemovable else { return nil }
+      guard let selectedRow, selectedRow.isRemovable, !selectedRow.isMainWorktree else { return nil }
       return {
         store.send(.requestRemoveWorktree(selectedRow.id, selectedRow.repositoryID))
       }

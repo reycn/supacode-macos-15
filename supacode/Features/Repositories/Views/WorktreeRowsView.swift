@@ -42,7 +42,8 @@ struct WorktreeRowsView: View {
         Button("Remove") {
           store.send(.requestRemoveWorktree(worktree.id, repository.id))
         }
-        .help("Remove worktree (⌘⌫)")
+        .help(row.isMainWorktree ? "Main worktree can't be removed" : "Remove worktree (⌘⌫)")
+        .disabled(row.isMainWorktree)
       }
     } else {
       WorktreeRow(

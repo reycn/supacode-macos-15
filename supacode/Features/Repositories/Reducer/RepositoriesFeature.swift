@@ -324,6 +324,9 @@ struct RepositoriesFeature {
         else {
           return .none
         }
+        if state.isMainWorktree(worktree) {
+          return .none
+        }
         if state.deletingWorktreeIDs.contains(worktree.id) {
           return .none
         }

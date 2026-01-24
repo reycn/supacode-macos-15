@@ -38,9 +38,8 @@ struct GitClient {
   }
 
   nonisolated func worktrees(for repoRoot: URL) async throws -> [Worktree] {
-    let baseDirectory = wtBaseDirectory(for: repoRoot)
     let repositoryRootURL = repoRoot.standardizedFileURL
-    let output = try await runWtList(repoRoot: repoRoot, baseDirectory: baseDirectory)
+    let output = try await runWtList(repoRoot: repoRoot)
     let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
     if trimmed.isEmpty {
       return []
@@ -49,7 +48,7 @@ struct GitClient {
     let entries = try JSONDecoder().decode([GitWtWorktreeEntry].self, from: data)
     let worktreeEntries = entries.enumerated().map { index, entry in
       let worktreeURL = URL(fileURLWithPath: entry.path).standardizedFileURL
-      let detail = Self.relativePath(from: baseDirectory, to: worktreeURL)
+      let detail = Self.relativePath(from: repositoryRootURL, to: worktreeURL)
       let id = worktreeURL.path(percentEncoded: false)
       let resourceValues = try? worktreeURL.resourceValues(forKeys: [
         .creationDateKey, .contentModificationDateKey,
@@ -97,22 +96,20 @@ struct GitClient {
   }
 
   nonisolated func createWorktree(named name: String, in repoRoot: URL) async throws -> Worktree {
-    let baseDirectory = wtBaseDirectory(for: repoRoot)
     let repositoryRootURL = repoRoot.standardizedFileURL
     let wtURL = try wtScriptURL()
     let output = try await runLoginShellProcess(
       executableURL: wtURL,
-      arguments: ["sw", name, "--base", baseDirectory.path(percentEncoded: false)],
+      arguments: ["sw", name],
       currentDirectoryURL: repoRoot
     )
     let pathLine = output.split(whereSeparator: \.isNewline).last.map(String.init) ?? ""
     if pathLine.isEmpty {
-      let command =
-        "\(wtURL.lastPathComponent) sw \(name) --base \(baseDirectory.path(percentEncoded: false))"
+      let command = "\(wtURL.lastPathComponent) sw \(name)"
       throw GitClientError.commandFailed(command: command, message: "Empty output")
     }
     let worktreeURL = URL(fileURLWithPath: pathLine).standardizedFileURL
-    let detail = Self.relativePath(from: baseDirectory, to: worktreeURL)
+    let detail = Self.relativePath(from: repositoryRootURL, to: worktreeURL)
     let id = worktreeURL.path(percentEncoded: false)
     return Worktree(
       id: id,
@@ -129,32 +126,20 @@ struct GitClient {
     return WorktreeDirtCheck.isDirty(statusOutput: output)
   }
 
-  nonisolated func removeWorktree(named name: String, in repoRoot: URL, force: Bool) async throws
-    -> URL
-  {
-    let baseDirectory = wtBaseDirectory(for: repoRoot)
-    let wtURL = try wtScriptURL()
-    var arguments = ["rm", "--base", baseDirectory.path(percentEncoded: false)]
+  nonisolated func removeWorktree(_ worktree: Worktree, force: Bool) async throws -> URL {
+    let rootPath = worktree.repositoryRootURL.path(percentEncoded: false)
+    let worktreePath = worktree.workingDirectory.path(percentEncoded: false)
+    var arguments = ["-C", rootPath, "worktree", "remove"]
     if force {
       arguments.append("--force")
     }
-    arguments.append(name)
-    print(
-      "[GitClient] removeWorktree: \(wtURL.lastPathComponent) \(arguments.joined(separator: " "))"
-    )
-    let output = try await runLoginShellProcess(
-      executableURL: wtURL,
-      arguments: arguments,
-      currentDirectoryURL: repoRoot
-    )
-    print("[GitClient] removeWorktree output: \(output)")
-    let pathLine = output.split(whereSeparator: \.isNewline).last.map(String.init) ?? ""
-    if pathLine.isEmpty {
-      let command = ([wtURL.lastPathComponent] + arguments).joined(separator: " ")
-      throw GitClientError.commandFailed(command: command, message: "Empty output")
+    arguments.append(worktreePath)
+    _ = try await runGit(arguments: arguments)
+    if !worktree.name.isEmpty {
+      let branchFlag = force ? "-D" : "-d"
+      _ = try await runGit(arguments: ["-C", rootPath, "branch", branchFlag, worktree.name])
     }
-    print("[GitClient] removeWorktree path: \(pathLine)")
-    return URL(fileURLWithPath: pathLine).standardizedFileURL
+    return worktree.workingDirectory
   }
 
   nonisolated func githubOwner(for repoRoot: URL) async -> String? {
@@ -171,9 +156,9 @@ struct GitClient {
     )
   }
 
-  nonisolated private func runWtList(repoRoot: URL, baseDirectory: URL) async throws -> String {
+  nonisolated private func runWtList(repoRoot: URL) async throws -> String {
     let wtURL = try wtScriptURL()
-    let arguments = ["ls", "--json", "--base", baseDirectory.path(percentEncoded: false)]
+    let arguments = ["ls", "--json"]
     print(
       "\(wtURL.lastPathComponent) \(arguments.joined(separator: " "))"
     )
@@ -199,10 +184,6 @@ struct GitClient {
     let raw = try? await runGit(arguments: ["-C", path, "config", "--get", "remote.origin.url"])
     let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     return trimmed.isEmpty ? nil : trimmed
-  }
-
-  nonisolated private func wtBaseDirectory(for repoRoot: URL) -> URL {
-    SupacodePaths.repositoryDirectory(for: repoRoot)
   }
 
   nonisolated private func runProcess(

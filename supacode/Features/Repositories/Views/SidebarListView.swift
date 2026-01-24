@@ -1,0 +1,40 @@
+import ComposableArchitecture
+import SwiftUI
+
+struct SidebarListView: View {
+  @Bindable var store: StoreOf<RepositoriesFeature>
+  @Binding var expandedRepoIDs: Set<Repository.ID>
+
+  var body: some View {
+    let selection = Binding<Worktree.ID?>(
+      get: { store.selectedWorktreeID },
+      set: { store.send(.selectWorktree($0)) }
+    )
+    List(selection: selection) {
+      ForEach(store.repositories) { repository in
+        RepositorySectionView(
+          repository: repository,
+          expandedRepoIDs: $expandedRepoIDs,
+          store: store
+        )
+      }
+    }
+    .listStyle(.sidebar)
+    .frame(minWidth: 220)
+    .onChange(of: store.repositories) { _, newValue in
+      let current = Set(newValue.map(\.id))
+      expandedRepoIDs.formUnion(current)
+      expandedRepoIDs = expandedRepoIDs.intersection(current)
+    }
+    .onChange(of: store.pendingWorktrees) { _, newValue in
+      let repositoryIDs = Set(newValue.map(\.repositoryID))
+      expandedRepoIDs.formUnion(repositoryIDs)
+    }
+    .dropDestination(for: URL.self) { urls, _ in
+      let fileURLs = urls.filter(\.isFileURL)
+      guard !fileURLs.isEmpty else { return false }
+      store.send(.openRepositories(fileURLs))
+      return true
+    }
+  }
+}

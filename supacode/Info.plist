@@ -6,5 +6,18 @@
     <string>https://supacode.sh/download/latest/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>eBdTbl+6sR8gxO1zyzyvdQHuJrXMLxD31oCc+JoW5jo=</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>sh.supacode.ghosttySurfaceId</string>
+			<key>UTTypeDescription</key>
+			<string>Supacode Ghostty Surface Identifier</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

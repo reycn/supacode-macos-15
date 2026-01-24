@@ -383,11 +383,7 @@ struct RepositoriesFeature {
           : nil
         return .run { send in
           do {
-            _ = try await gitClient.removeWorktree(
-              worktree.name,
-              repository.rootURL,
-              true
-            )
+            _ = try await gitClient.removeWorktree(worktree, true)
             await send(
               .worktreeRemoved(
                 worktree.id,
@@ -438,11 +434,7 @@ struct RepositoriesFeature {
           var failures: [String] = []
           for worktree in repository.worktrees {
             do {
-              _ = try await gitClient.removeWorktree(
-                worktree.name,
-                repository.rootURL,
-                true
-              )
+              _ = try await gitClient.removeWorktree(worktree, true)
             } catch {
               failures.append(error.localizedDescription)
             }

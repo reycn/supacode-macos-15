@@ -1,0 +1,47 @@
+import Kingfisher
+import SwiftUI
+
+struct RepoHeaderRow: View {
+  let name: String
+  let initials: String
+  let profileURL: URL?
+  let isExpanded: Bool
+  let isRemoving: Bool
+
+  var body: some View {
+    HStack {
+      Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .accessibilityHidden(true)
+      ZStack {
+        RoundedRectangle(cornerRadius: 6, style: .continuous)
+          .fill(.secondary.opacity(0.2))
+        if let profileURL {
+          KFImage(profileURL)
+            .resizable()
+            .placeholder {
+              Text(initials)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .scaledToFill()
+        } else {
+          Text(initials)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+      }
+      .frame(width: 24, height: 24)
+      .clipShape(.rect(cornerRadius: 6, style: .continuous))
+      Text(name)
+        .font(.headline)
+        .foregroundStyle(.primary)
+      if isRemoving {
+        Text("Removing...")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+    }
+  }
+}

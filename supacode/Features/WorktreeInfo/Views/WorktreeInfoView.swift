@@ -40,71 +40,16 @@ struct WorktreeInfoView: View {
                   .foregroundStyle(.secondary)
               }
 
-              LabeledContent("Branch") {
-                Text(snapshot.branchName)
+              LabeledContent("Repository name") {
+                Text(snapshot.repositoryName)
               }
 
-              if snapshot.isDetachedHead {
-                LabeledContent("Detached HEAD") {
-                  Text("Yes")
-                }
+              LabeledContent("Repository path") {
+                Text(snapshot.repositoryPath)
               }
 
-              LabeledContent("Default branch") {
-                Text(snapshot.defaultBranchName ?? "n/a")
-                  .foregroundStyle(snapshot.defaultBranchName == nil ? .secondary : .primary)
-              }
-
-              LabeledContent("Ahead/Behind default") {
-                Text(aheadBehindText(ahead: snapshot.aheadOfDefault, behind: snapshot.behindDefault))
-              }
-
-              LabeledContent("Out of date with default") {
-                Text(boolText(snapshot.outOfDateWithDefault))
-              }
-
-              LabeledContent("Merge conflict risk") {
-                Text(boolText(snapshot.mergeConflictPossible))
-              }
-
-              LabeledContent("Tracking branch") {
-                Text(snapshot.upstreamBranchName ?? "n/a")
-                  .foregroundStyle(snapshot.upstreamBranchName == nil ? .secondary : .primary)
-              }
-
-              LabeledContent("Ahead/Behind upstream") {
-                Text(aheadBehindText(ahead: snapshot.aheadOfUpstream, behind: snapshot.behindUpstream))
-              }
-
-              LabeledContent("Remote branch") {
-                Text(boolText(snapshot.remoteBranchExists))
-              }
-
-              LabeledContent("Uncommitted changes") {
-                Text(snapshot.hasUncommittedChanges ? "Yes" : "No")
-              }
-
-              LabeledContent("Staged/Unstaged/Untracked") {
-                Text("\(snapshot.stagedChanges)/\(snapshot.unstagedChanges)/\(snapshot.untrackedChanges)")
-              }
-
-              LabeledContent("Stashes") {
-                Text("\(snapshot.stashCount)")
-              }
-
-              LabeledContent("Last commit") {
-                if let subject = snapshot.lastCommitSubject {
-                  Text(subject)
-                } else {
-                  Text("n/a")
-                    .foregroundStyle(.secondary)
-                }
-              }
-
-              if let lastCommitDate = snapshot.lastCommitDate {
-                LabeledContent("Last commit time") {
-                  Text(lastCommitDate, style: .relative)
-                }
+              LabeledContent("Worktree path") {
+                Text(snapshot.worktreePath)
               }
             }
 
@@ -119,29 +64,9 @@ struct WorktreeInfoView: View {
                 }
               }
 
-              if let number = snapshot.pullRequestNumber, let title = snapshot.pullRequestTitle {
-                LabeledContent("Pull request") {
-                  Text("#\(number) \(title)")
-                }
-              } else {
-                LabeledContent("Pull request") {
-                  Text("n/a")
-                    .foregroundStyle(.secondary)
-                }
-              }
-
-              LabeledContent("PR state") {
-                Text(prStateText(
-                  state: snapshot.pullRequestState,
-                  isDraft: snapshot.pullRequestIsDraft,
-                  reviewDecision: snapshot.pullRequestReviewDecision
-                ))
-              }
-
-              if let updatedAt = snapshot.pullRequestUpdatedAt {
-                LabeledContent("PR updated") {
-                  Text(updatedAt, style: .relative)
-                }
+              LabeledContent("Default branch") {
+                Text(snapshot.defaultBranchName ?? "n/a")
+                  .foregroundStyle(snapshot.defaultBranchName == nil ? .secondary : .primary)
               }
 
               Text("CI")
@@ -171,23 +96,6 @@ struct WorktreeInfoView: View {
               }
             }
 
-            VStack(alignment: .leading) {
-              Text("Paths")
-                .font(.headline)
-
-              LabeledContent("Repository name") {
-                Text(snapshot.repositoryName)
-              }
-
-              LabeledContent("Repository") {
-                Text(snapshot.repositoryPath)
-              }
-
-              LabeledContent("Worktree") {
-                Text(snapshot.worktreePath)
-              }
-            }
-
             if let lastRefresh = state.lastRefresh {
               LabeledContent("Last refreshed") {
                 Text(lastRefresh, style: .relative)
@@ -202,41 +110,6 @@ struct WorktreeInfoView: View {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
-}
-
-private func boolText(_ value: Bool?) -> String {
-  switch value {
-  case .some(true):
-    return "Yes"
-  case .some(false):
-    return "No"
-  case .none:
-    return "Unknown"
-  }
-}
-
-private func aheadBehindText(ahead: Int?, behind: Int?) -> String {
-  if let ahead, let behind {
-    return "ahead \(ahead) / behind \(behind)"
-  }
-  return "n/a"
-}
-
-private func prStateText(state: String?, isDraft: Bool, reviewDecision: String?) -> String {
-  var parts: [String] = []
-  if let state, !state.isEmpty {
-    parts.append(state)
-  }
-  if isDraft {
-    parts.append("draft")
-  }
-  if let reviewDecision, !reviewDecision.isEmpty {
-    parts.append(reviewDecision)
-  }
-  if parts.isEmpty {
-    return "n/a"
-  }
-  return parts.joined(separator: " / ")
 }
 
 private func ciStatusText(status: String?, conclusion: String?) -> String {

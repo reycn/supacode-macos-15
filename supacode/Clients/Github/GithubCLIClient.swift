@@ -4,7 +4,6 @@ import Foundation
 struct GithubCLIClient {
   var defaultBranch: @Sendable (URL) async throws -> String
   var latestRun: @Sendable (URL, String) async throws -> GithubWorkflowRun?
-  var pullRequest: @Sendable (URL, String) async throws -> GithubPullRequest?
   var isAvailable: @Sendable () async -> Bool
 }
 
@@ -48,30 +47,6 @@ extension GithubCLIClient: DependencyKey {
       let runs = try decoder.decode([GithubWorkflowRun].self, from: data)
       return runs.first
       },
-      pullRequest: { repoRoot, branch in
-        let output = try await runGh(
-          shell: shell,
-          arguments: [
-            "pr",
-            "list",
-            "--head",
-            branch,
-            "--limit",
-            "1",
-            "--json",
-            "number,title,state,isDraft,reviewDecision,updatedAt",
-          ],
-          repoRoot: repoRoot
-        )
-      if output.isEmpty {
-        return nil
-      }
-      let data = Data(output.utf8)
-      let decoder = JSONDecoder()
-      decoder.dateDecodingStrategy = .iso8601
-      let prs = try decoder.decode([GithubPullRequest].self, from: data)
-      return prs.first
-      },
       isAvailable: {
         do {
           _ = try await runGh(shell: shell, arguments: ["--version"], repoRoot: nil)
@@ -86,7 +61,6 @@ extension GithubCLIClient: DependencyKey {
   static let testValue = GithubCLIClient(
     defaultBranch: { _ in "main" },
     latestRun: { _, _ in nil },
-    pullRequest: { _, _ in nil },
     isAvailable: { true }
   )
 }

@@ -22,7 +22,6 @@ struct WorktreeInfoFeature {
     case appBecameActive
   }
 
-  @Dependency(\.shellClient) private var shellClient
   @Dependency(\.githubCLI) private var githubCLI
   @Dependency(\.continuousClock) private var clock
 
@@ -58,21 +57,16 @@ struct WorktreeInfoFeature {
       case .refresh:
         guard let worktree = state.worktree else { return .none }
         state.status = .loading
-        let shellClient = shellClient
         let githubCLI = githubCLI
         return .run { send in
           let result: Result<WorktreeInfoSnapshot, WorktreeInfoError> = await Result {
             try await loadWorktreeInfoSnapshot(
               worktree: worktree,
-              shellClient: shellClient,
               githubCLI: githubCLI
             )
           }.mapError { error in
             if let githubError = error as? GithubCLIError {
               return .githubFailure(githubError.localizedDescription)
-            }
-            if let shellError = error as? ShellClientError {
-              return .gitFailure(shellError.localizedDescription)
             }
             return .gitFailure(error.localizedDescription)
           }
@@ -119,42 +113,17 @@ struct WorktreeInfoFeature {
 
 nonisolated private func loadWorktreeInfoSnapshot(
   worktree: Worktree,
-  shellClient: ShellClient,
   githubCLI: GithubCLIClient
 ) async throws -> WorktreeInfoSnapshot {
   let repoRoot = worktree.repositoryRootURL
-  let worktreeRoot = worktree.workingDirectory
   let repositoryName = repoRoot.lastPathComponent
   let repositoryPath = repoRoot.path(percentEncoded: false)
-  let worktreePath = worktreeRoot.path(percentEncoded: false)
-
-  let statusOutput = try await runGit(
-    ["status", "--porcelain=v2", "--branch"],
-    in: worktreeRoot,
-    shellClient: shellClient
-  )
-  let statusSummary = parseGitStatusV2(statusOutput)
-  let branchHead = statusSummary.branchHead ?? "HEAD"
-  let isDetachedHead = branchHead == "(detached)"
-  let branchName: String
-  if isDetachedHead {
-    branchName = statusSummary.shortOid ?? "HEAD"
-  } else {
-    branchName = branchHead
-  }
+  let worktreePath = worktree.workingDirectory.path(percentEncoded: false)
 
   var githubError: String?
   var ciError: String?
-  let originRemote = (try? await runGit(
-    ["config", "--get", "remote.origin.url"],
-    in: repoRoot,
-    shellClient: shellClient
-  ))?.trimmingCharacters(in: .whitespacesAndNewlines)
-  let isGitHubRepo = isGitHubRemote(originRemote)
-  let githubAvailable = isGitHubRepo ? await githubCLI.isAvailable() : false
-  if !isGitHubRepo {
-    githubError = "Not a GitHub repository"
-  } else if !githubAvailable {
+  let githubAvailable = await githubCLI.isAvailable()
+  if !githubAvailable {
     githubError = GithubCLIError.unavailable.errorDescription
   }
 
@@ -163,157 +132,17 @@ nonisolated private func loadWorktreeInfoSnapshot(
     do {
       defaultBranchName = try await githubCLI.defaultBranch(repoRoot)
     } catch {
-      githubError = githubError ?? error.localizedDescription
+      githubError = "Not a GitHub repository"
     }
   }
-  if defaultBranchName == nil {
-    let symbolicRef = try? await runGit(
-      ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"],
-      in: repoRoot,
-      shellClient: shellClient
-    )
-    if let symbolicRef, !symbolicRef.isEmpty {
-      defaultBranchName = parseDefaultBranchFromSymbolicRef(symbolicRef)
-    }
-  }
-  if defaultBranchName == nil {
-    let localBranches = try? await runGit(
-      ["for-each-ref", "--format=%(refname:short)", "refs/heads"],
-      in: repoRoot,
-      shellClient: shellClient
-    )
-    if let localBranches {
-      let branches = localBranches
-        .split(whereSeparator: \.isNewline)
-        .map { String($0) }
-      if branches.contains("main") {
-        defaultBranchName = "main"
-      } else if branches.contains("master") {
-        defaultBranchName = "master"
-      } else {
-        defaultBranchName = branches.first
-      }
-    }
-  }
-
-  var defaultRef: String?
-  if let defaultBranchName {
-    let remoteRef = "refs/remotes/origin/\(defaultBranchName)"
-    if await gitRefExists(remoteRef, in: repoRoot, shellClient: shellClient) {
-      defaultRef = "origin/\(defaultBranchName)"
-    } else if await gitRefExists("refs/heads/\(defaultBranchName)", in: repoRoot, shellClient: shellClient) {
-      defaultRef = defaultBranchName
-    }
-  }
-
-  var aheadOfDefault: Int?
-  var behindDefault: Int?
-  if let defaultRef {
-    let output = try? await runGit(
-      ["rev-list", "--left-right", "--count", "\(defaultRef)...HEAD"],
-      in: worktreeRoot,
-      shellClient: shellClient
-    )
-    if let output, let counts = parseAheadBehindCounts(output) {
-      behindDefault = counts.behind
-      aheadOfDefault = counts.ahead
-    }
-  }
-
-  let outOfDateWithDefault = behindDefault.map { $0 > 0 }
-
-  let upstreamBranchName = statusSummary.upstream
-  let aheadOfUpstream = statusSummary.ahead
-  let behindUpstream = statusSummary.behind
-  let hasUncommittedChanges =
-    statusSummary.staged > 0 || statusSummary.unstaged > 0 || statusSummary.untracked > 0
-
-  let stashOutput = try? await runGit(
-    ["stash", "list"],
-    in: worktreeRoot,
-    shellClient: shellClient
-  )
-  let stashCount = stashOutput?.isEmpty == false
-    ? stashOutput?.split(whereSeparator: \.isNewline).count ?? 0
-    : 0
-
-  let lastCommitOutput = try? await runGit(
-    ["log", "-1", "--pretty=format:%s%n%ct"],
-    in: worktreeRoot,
-    shellClient: shellClient
-  )
-  var lastCommitSubject: String?
-  var lastCommitDate: Date?
-  if let lastCommitOutput, !lastCommitOutput.isEmpty {
-    let parts = lastCommitOutput.split(whereSeparator: \.isNewline)
-    if let subject = parts.first {
-      lastCommitSubject = String(subject)
-    }
-    if parts.count > 1, let timestamp = TimeInterval(parts[1]) {
-      lastCommitDate = Date(timeIntervalSince1970: timestamp)
-    }
-  }
-
-  var mergeConflictPossible: Bool?
-  if let defaultRef {
-    if let base = try? await runGit(
-      ["merge-base", "HEAD", defaultRef],
-      in: worktreeRoot,
-      shellClient: shellClient
-    ), !base.isEmpty {
-      let mergeOutput = try? await runGit(
-        ["merge-tree", base, "HEAD", defaultRef],
-        in: worktreeRoot,
-        shellClient: shellClient
-      )
-      if let mergeOutput {
-        mergeConflictPossible = parseMergeTreeConflict(mergeOutput)
-      }
-    }
-  }
-
-  var remoteBranchExists: Bool?
-  if !branchName.isEmpty {
-    let output = try? await runGit(
-      ["ls-remote", "--heads", "origin", branchName],
-      in: repoRoot,
-      shellClient: shellClient
-    )
-    if let output {
-      remoteBranchExists = !output.isEmpty
-    }
-  }
-
-  var pullRequestNumber: Int?
-  var pullRequestTitle: String?
-  var pullRequestState: String?
-  var pullRequestIsDraft = false
-  var pullRequestReviewDecision: String?
-  var pullRequestUpdatedAt: Date?
-
-  if githubAvailable, !isDetachedHead {
-    do {
-      if let pr = try await githubCLI.pullRequest(repoRoot, branchName) {
-        pullRequestNumber = pr.number
-        pullRequestTitle = pr.title
-        pullRequestState = pr.state
-        pullRequestIsDraft = pr.isDraft
-        pullRequestReviewDecision = pr.reviewDecision
-        pullRequestUpdatedAt = pr.updatedAt
-      }
-    } catch {
-      githubError = githubError ?? error.localizedDescription
-    }
-  }
-
   var workflowName: String?
   var workflowStatus: String?
   var workflowConclusion: String?
   var workflowUpdatedAt: Date?
 
-  if githubAvailable, !isDetachedHead {
+  if githubAvailable, let defaultBranchName {
     do {
-      if let run = try await githubCLI.latestRun(repoRoot, branchName) {
+      if let run = try await githubCLI.latestRun(repoRoot, defaultBranchName) {
         workflowName = run.workflowName ?? run.name ?? run.displayTitle
         workflowStatus = run.status
         workflowConclusion = run.conclusion
@@ -328,30 +157,7 @@ nonisolated private func loadWorktreeInfoSnapshot(
     repositoryName: repositoryName,
     repositoryPath: repositoryPath,
     worktreePath: worktreePath,
-    branchName: branchName,
-    isDetachedHead: isDetachedHead,
     defaultBranchName: defaultBranchName,
-    aheadOfDefault: aheadOfDefault,
-    behindDefault: behindDefault,
-    outOfDateWithDefault: outOfDateWithDefault,
-    upstreamBranchName: upstreamBranchName,
-    aheadOfUpstream: aheadOfUpstream,
-    behindUpstream: behindUpstream,
-    remoteBranchExists: remoteBranchExists,
-    hasUncommittedChanges: hasUncommittedChanges,
-    stagedChanges: statusSummary.staged,
-    unstagedChanges: statusSummary.unstaged,
-    untrackedChanges: statusSummary.untracked,
-    stashCount: stashCount,
-    lastCommitSubject: lastCommitSubject,
-    lastCommitDate: lastCommitDate,
-    mergeConflictPossible: mergeConflictPossible,
-    pullRequestNumber: pullRequestNumber,
-    pullRequestTitle: pullRequestTitle,
-    pullRequestState: pullRequestState,
-    pullRequestIsDraft: pullRequestIsDraft,
-    pullRequestReviewDecision: pullRequestReviewDecision,
-    pullRequestUpdatedAt: pullRequestUpdatedAt,
     workflowName: workflowName,
     workflowStatus: workflowStatus,
     workflowConclusion: workflowConclusion,
@@ -359,31 +165,4 @@ nonisolated private func loadWorktreeInfoSnapshot(
     githubError: githubError,
     ciError: ciError
   )
-}
-
-nonisolated private func runGit(
-  _ arguments: [String],
-  in directory: URL,
-  shellClient: ShellClient
-) async throws -> String {
-  let env = URL(fileURLWithPath: "/usr/bin/env")
-  return try await shellClient.run(env, ["git"] + arguments, directory).stdout
-}
-
-nonisolated private func gitRefExists(
-  _ ref: String,
-  in directory: URL,
-  shellClient: ShellClient
-) async -> Bool {
-  do {
-    _ = try await runGit(["show-ref", "--verify", "--quiet", ref], in: directory, shellClient: shellClient)
-    return true
-  } catch {
-    return false
-  }
-}
-
-nonisolated private func isGitHubRemote(_ remote: String?) -> Bool {
-  guard let remote else { return false }
-  return remote.contains("github.com")
 }

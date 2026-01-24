@@ -7,12 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		92970ABCFB3F023AD07AE2C3 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 497B582F42253CBC8FBF101F /* ComposableArchitecture */; };
+		886A649F771240E8A5AC792D /* Dependencies in Frameworks */ = {isa = PBXBuildFile; productRef = 8D787DCF45744283A83F226F /* Dependencies */; };
 		C8B33B9AFE69E738ABFA08BE /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 497B582F42253CBC8FBF101F /* ComposableArchitecture */; };
 		D61414532F1F9799007DF542 /* Bonsplit in Frameworks */ = {isa = PBXBuildFile; productRef = D61414522F1F9799007DF542 /* Bonsplit */; };
 		D64162B02F23CAF100260CA3 /* ghostty in Resources */ = {isa = PBXBuildFile; fileRef = D64162AD2F23CAF100260CA3 /* ghostty */; };
 		D64162B12F23CAF100260CA3 /* terminfo in Resources */ = {isa = PBXBuildFile; fileRef = D64162AE2F23CAF100260CA3 /* terminfo */; };
 		D64162B22F23CAF100260CA3 /* git-wt in Resources */ = {isa = PBXBuildFile; fileRef = D64162AF2F23CAF100260CA3 /* git-wt */; };
+		D661760B2F250A60000FC27C /* CasePaths in Frameworks */ = {isa = PBXBuildFile; productRef = D661760A2F250A60000FC27C /* CasePaths */; };
 		D6A1CB312F1F4ABF004FDABD /* GhosttyKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = D6A1CB2F2F1F4A48004FDABD /* GhosttyKit.xcframework */; };
 		D6A1CB362F1F4ACB004FDABD /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D6A1CB342F1F4AC2004FDABD /* Carbon.framework */; };
 		D6F820F52F1FC962004B4174 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = D6F820F42F1FC962004B4174 /* Kingfisher */; };
@@ -71,8 +72,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				C8B33B9AFE69E738ABFA08BE /* ComposableArchitecture in Frameworks */,
+				886A649F771240E8A5AC792D /* Dependencies in Frameworks */,
 				D6F820F52F1FC962004B4174 /* Kingfisher in Frameworks */,
 				D6A1CB312F1F4ABF004FDABD /* GhosttyKit.xcframework in Frameworks */,
+				D661760B2F250A60000FC27C /* CasePaths in Frameworks */,
 				D61414532F1F9799007DF542 /* Bonsplit in Frameworks */,
 				D6A1CB362F1F4ACB004FDABD /* Carbon.framework in Frameworks */,
 				DFE570C142184CC387C1BC78 /* Sparkle in Frameworks */,
@@ -83,7 +86,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				92970ABCFB3F023AD07AE2C3 /* ComposableArchitecture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -143,8 +145,10 @@
 			packageProductDependencies = (
 				D61414522F1F9799007DF542 /* Bonsplit */,
 				D6F820F42F1FC962004B4174 /* Kingfisher */,
+				8D787DCF45744283A83F226F /* Dependencies */,
 				B5698573F7354B14B940EA60 /* Sparkle */,
 				497B582F42253CBC8FBF101F /* ComposableArchitecture */,
+				D661760A2F250A60000FC27C /* CasePaths */,
 			);
 			productName = supacode;
 			productReference = D69CE04A2F1F378200584C57 /* supacode.app */;
@@ -168,7 +172,6 @@
 			);
 			name = supacodeTests;
 			packageProductDependencies = (
-				497B582F42253CBC8FBF101F /* ComposableArchitecture */,
 			);
 			productName = supacodeTests;
 			productReference = D6F821012F1FCBC1004B4174 /* supacodeTests.xctest */;
@@ -205,7 +208,9 @@
 			packageReferences = (
 				D61414512F1F9799007DF542 /* XCRemoteSwiftPackageReference "bonsplit" */,
 				D6F820F32F1FC962004B4174 /* XCRemoteSwiftPackageReference "Kingfisher" */,
+				911B4AAD84AF4B34BE232133 /* XCRemoteSwiftPackageReference "swift-case-paths" */,
 				8E10C2184F9342AC850013F5 /* XCRemoteSwiftPackageReference "Sparkle" */,
+				46ECCA2394D141A89BE74516 /* XCRemoteSwiftPackageReference "swift-dependencies" */,
 				B43B9188E1D223E6F7344501 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -502,7 +507,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 14;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 9ZLSJ2GN2B;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.1;
 				MARKETING_VERSION = 0.2.12;
@@ -524,7 +529,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 14;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 9ZLSJ2GN2B;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.1;
 				MARKETING_VERSION = 0.2.12;
@@ -572,12 +577,28 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		46ECCA2394D141A89BE74516 /* XCRemoteSwiftPackageReference "swift-dependencies" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-dependencies";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.10.1;
+			};
+		};
 		8E10C2184F9342AC850013F5 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sparkle-project/Sparkle";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 2.8.1;
+			};
+		};
+		911B4AAD84AF4B34BE232133 /* XCRemoteSwiftPackageReference "swift-case-paths" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-case-paths";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.7.2;
 			};
 		};
 		B43B9188E1D223E6F7344501 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
@@ -612,6 +633,11 @@
 			package = B43B9188E1D223E6F7344501 /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
 			productName = ComposableArchitecture;
 		};
+		8D787DCF45744283A83F226F /* Dependencies */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 46ECCA2394D141A89BE74516 /* XCRemoteSwiftPackageReference "swift-dependencies" */;
+			productName = Dependencies;
+		};
 		B5698573F7354B14B940EA60 /* Sparkle */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8E10C2184F9342AC850013F5 /* XCRemoteSwiftPackageReference "Sparkle" */;
@@ -621,6 +647,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = D61414512F1F9799007DF542 /* XCRemoteSwiftPackageReference "bonsplit" */;
 			productName = Bonsplit;
+		};
+		D661760A2F250A60000FC27C /* CasePaths */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 911B4AAD84AF4B34BE232133 /* XCRemoteSwiftPackageReference "swift-case-paths" */;
+			productName = CasePaths;
 		};
 		D6F820F42F1FC962004B4174 /* Kingfisher */ = {
 			isa = XCSwiftPackageProductDependency;

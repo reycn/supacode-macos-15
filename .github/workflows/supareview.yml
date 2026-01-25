@@ -11,6 +11,10 @@ permissions:
   pull-requests: write
   issues: write
 
+concurrency:
+  group: supareview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   supareview:
     runs-on: ubuntu-latest

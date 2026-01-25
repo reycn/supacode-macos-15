@@ -22,7 +22,6 @@ struct AppearanceSettingsView: View {
       }
       .formStyle(.grouped)
     }
-    .frame(maxWidth: 520, maxHeight: .infinity, alignment: .topLeading)
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 }

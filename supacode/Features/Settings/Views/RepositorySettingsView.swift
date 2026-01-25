@@ -34,7 +34,6 @@ struct RepositorySettingsView: View {
       }
     }
     .formStyle(.grouped)
-    .scenePadding()
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .task {
       store.send(.task)

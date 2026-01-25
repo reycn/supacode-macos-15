@@ -52,13 +52,16 @@ struct SupacodeApp: App {
     }
     let runtime = GhosttyRuntime()
     _ghostty = State(initialValue: runtime)
-    _ghosttyShortcuts = State(initialValue: GhosttyShortcutManager(runtime: runtime))
+    let shortcuts = GhosttyShortcutManager(runtime: runtime)
+    _ghosttyShortcuts = State(initialValue: shortcuts)
     let initialSettings = SettingsStorage().load()
     let terminalManager = WorktreeTerminalManager(runtime: runtime)
     _terminalManager = State(initialValue: terminalManager)
-    _commandKeyObserver = State(initialValue: CommandKeyObserver())
-    _store = State(
-      initialValue: Store(initialState: AppFeature.State(settings: SettingsFeature.State(settings: initialSettings))) {
+    let keyObserver = CommandKeyObserver()
+    _commandKeyObserver = State(initialValue: keyObserver)
+    let appStore = Store(
+      initialState: AppFeature.State(settings: SettingsFeature.State(settings: initialSettings))
+    ) {
         AppFeature()
       } withDependencies: { values in
         values.terminalClient = TerminalClient(
@@ -76,6 +79,11 @@ struct SupacodeApp: App {
           }
         )
       }
+    _store = State(initialValue: appStore)
+    SettingsWindowManager.shared.configure(
+      store: appStore,
+      ghosttyShortcuts: shortcuts,
+      commandKeyObserver: keyObserver
     )
   }
 
@@ -93,29 +101,15 @@ struct SupacodeApp: App {
       SidebarCommands()
       TerminalCommands(ghosttyShortcuts: ghosttyShortcuts)
       UpdateCommands(store: store.scope(state: \.updates, action: \.updates))
-    }
-    WindowGroup("Repo Settings", id: WindowIdentifiers.repoSettings, for: Repository.ID.self) { $repositoryID in
-      if let repositoryID {
-        let rootURL = URL(fileURLWithPath: repositoryID)
-        RepositorySettingsView(
-          store: Store(initialState: RepositorySettingsFeature.State(rootURL: rootURL)) {
-            RepositorySettingsFeature()
-          }
+      CommandGroup(replacing: .appSettings) {
+        Button("Settings...") {
+          SettingsWindowManager.shared.show()
+        }
+        .keyboardShortcut(
+          AppShortcuts.openSettings.keyEquivalent,
+          modifiers: AppShortcuts.openSettings.modifiers
         )
-      } else {
-        Text("Select a repository to edit settings.")
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .scenePadding()
       }
     }
-    .environment(ghosttyShortcuts)
-    .environment(commandKeyObserver)
-    Settings {
-      SettingsView(store: store)
-        .environment(ghosttyShortcuts)
-        .environment(commandKeyObserver)
-    }
-    .environment(ghosttyShortcuts)
-    .environment(commandKeyObserver)
   }
 }

@@ -176,11 +176,10 @@ struct GitClient {
 
   nonisolated private func wtScriptURL() throws -> URL {
     guard let url = Bundle.main.url(forResource: "wt", withExtension: nil, subdirectory: "git-wt") else {
-        fatalError("Bundled wt script not found")
+      fatalError("Bundled wt script not found")
     }
-      return url
+    return url
   }
-
 
   nonisolated private func runLoginShellProcess(
     executableURL: URL,

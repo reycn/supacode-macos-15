@@ -23,6 +23,7 @@ struct OpenWorktreeActionMenuLabelView: View {
       if let icon = action.appIcon {
         Image(nsImage: resizedIcon(icon, size: CGSize(width: 16, height: 16)))
           .renderingMode(.original)
+          .accessibilityHidden(true)
       }
       if let shortcutHint {
         HStack(spacing: 2) {

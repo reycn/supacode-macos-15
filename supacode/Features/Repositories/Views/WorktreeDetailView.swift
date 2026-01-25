@@ -129,6 +129,7 @@ struct WorktreeDetailView: View {
       } label: {
         Image(systemName: "chevron.down")
           .font(.system(size: 8))
+          .accessibilityLabel("Open in menu")
       }
       .buttonStyle(.borderless)
       .padding(8)

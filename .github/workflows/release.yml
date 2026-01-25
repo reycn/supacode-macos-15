@@ -181,10 +181,7 @@ jobs:
           SENTRY_ORG: supabit
           SENTRY_PROJECT: supacode
         run: |
-          if ! command -v sentry-cli >/dev/null; then
-            brew install sentry-cli
-          fi
-          sentry-cli debug-files upload --include-sources build/supacode.xcarchive/dSYMs
+          mise exec -- sentry-cli debug-files upload --include-sources build/supacode.xcarchive/dSYMs
       - run: |
           cat > build/ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>

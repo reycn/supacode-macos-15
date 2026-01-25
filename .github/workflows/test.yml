@@ -30,6 +30,11 @@ jobs:
             ${{ runner.os }}-${{ runner.arch }}-mise-
       - run: brew install mise 2>/dev/null
       - run: mise install
+      - name: Ghostty cache key
+        run: |
+          set -euo pipefail
+          GHOSTTY_SHA=$(git -C ThirdParty/ghostty rev-parse HEAD)
+          printf '%s\n' "GHOSTTY_SHA=$GHOSTTY_SHA" >> "$GITHUB_ENV"
       - name: Ghostty cache
         uses: ./.github/actions/shared-cache
         with:
@@ -37,7 +42,7 @@ jobs:
             Frameworks/GhosttyKit.xcframework
             Resources/ghostty
             Resources/terminfo
-          key: ${{ runner.os }}-${{ runner.arch }}-ghostty-${{ hashFiles('ThirdParty/ghostty/**') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-ghostty-${{ env.GHOSTTY_SHA }}
       - name: Build ghostty
         run: |
           set -euo pipefail

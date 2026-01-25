@@ -31,11 +31,13 @@ jobs:
           fi
           echo "TAG=$TAG" >> "$GITHUB_ENV"
       - name: Prepare release context
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          PREV_TAG=$(git tag --list 'v*' --sort=-v:refname | grep -Fvx "$TAG" | head -n 1 || true)
-          if [ -n "$PREV_TAG" ]; then
-            RANGE="$PREV_TAG..$TAG"
+          LATEST_RELEASE_TAG=$(gh release list --limit 100 --exclude-drafts --exclude-pre-releases --json tagName,isLatest --jq '.[] | select(.isLatest) | .tagName' | head -n 1 || true)
+          if [ -n "$LATEST_RELEASE_TAG" ]; then
+            RANGE="$LATEST_RELEASE_TAG..$TAG"
           else
             RANGE="$(git rev-list --max-parents=0 HEAD)..$TAG"
           fi

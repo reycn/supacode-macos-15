@@ -39,7 +39,7 @@ $(GHOSTTY_BUILD_OUTPUTS):
 	rsync -a --delete "$$terminfo_src/" "$$terminfo_dst/"
 
 build-app: build-ghostty-xcframework # Build the macOS app (Debug)
-	bash -o pipefail -c 'xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -skipMacroValidation 2>&1 | mise exec -- xcsift -qw'
+	bash -o pipefail -c 'xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -skipMacroValidation 2>&1 | mise exec -- xcsift -qw --format toon'
 
 run-app: build-app # Build then launch (Debug) with log streaming
 	@settings="$$(xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug -showBuildSettings -json 2>/dev/null)"; \
@@ -67,7 +67,7 @@ lint: # Run swiftlint
 	mise exec -- swiftlint --quiet
 
 test: build-ghostty-xcframework
-	bash -o pipefail -c 'xcodebuild test -project supacode.xcodeproj -scheme supacode -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -skipMacroValidation 2>&1 | mise exec -- xcsift -qw'
+	bash -o pipefail -c 'xcodebuild test -project supacode.xcodeproj -scheme supacode -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -skipMacroValidation 2>&1 | mise exec -- xcsift -qw --format toon'
 
 format: # Swift format
 	swift-format -p --in-place --recursive --configuration ./.swift-format.json supacode supacodeTests

@@ -76,6 +76,8 @@ update-wt: # Download git-wt binary to Resources
 	@mkdir -p "$(CURRENT_MAKEFILE_DIR)/Resources/git-wt"
 	@curl -fsSL "https://raw.githubusercontent.com/khoi/git-wt/refs/heads/main/wt" -o "$(CURRENT_MAKEFILE_DIR)/Resources/git-wt/wt"
 	@chmod +x "$(CURRENT_MAKEFILE_DIR)/Resources/git-wt/wt"
+	@git add "$(CURRENT_MAKEFILE_DIR)/Resources/git-wt/wt"
+	@git commit -m "update git-wt"
 
 bump-version: # Bump app version (usage: make bump-version [VERSION=x.x.x] [BUILD=123])
 	@if [ -z "$(VERSION)" ]; then \

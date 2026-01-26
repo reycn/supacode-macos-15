@@ -57,6 +57,10 @@ final class WorktreeTerminalManager {
     states = states.filter { worktreeIDs.contains($0.key) }
   }
 
+  func stateIfExists(for worktreeID: Worktree.ID) -> WorktreeTerminalState? {
+    states[worktreeID]
+  }
+
   func focusedTaskStatus(for worktreeID: Worktree.ID) -> WorktreeTaskStatus? {
     states[worktreeID]?.focusedTaskStatus
   }

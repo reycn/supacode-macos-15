@@ -25,7 +25,7 @@ struct WorktreeInfoView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
       } else if let snapshot = state.snapshot, let worktree = state.worktree {
-        let terminalState = terminalManager.state(for: worktree) { false }
+        let terminalState = terminalManager.stateIfExists(for: worktree.id)
         ScrollView {
           VStack(alignment: .leading) {
             if case .failed(let message) = state.status {
@@ -130,7 +130,9 @@ struct WorktreeInfoView: View {
               .foregroundStyle(.secondary)
             }
 
-            WorktreeNotificationsListView(state: terminalState, worktreeName: worktree.name)
+            if let terminalState {
+              WorktreeNotificationsListView(state: terminalState, worktreeName: worktree.name)
+            }
           }
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding()

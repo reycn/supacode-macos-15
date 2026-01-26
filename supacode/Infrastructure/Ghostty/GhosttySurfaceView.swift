@@ -63,6 +63,11 @@ final class GhosttySurfaceView: NSView, Identifiable {
     GHOSTTY_MOUSE_SHAPE_S_RESIZE,
     GHOSTTY_MOUSE_SHAPE_NS_RESIZE,
   ]
+  private static let dropTypes: Set<NSPasteboard.PasteboardType> = [
+    .string,
+    .fileURL,
+    .URL,
+  ]
 
   override var acceptsFirstResponder: Bool { true }
 
@@ -84,6 +89,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
     wantsLayer = true
     bridge.surfaceView = self
     createSurface()
+    registerForDraggedTypes(Array(Self.dropTypes))
   }
 
   required init?(coder: NSCoder) {
@@ -936,6 +942,40 @@ final class GhosttySurfaceView: NSView, Identifiable {
     return flags
   }
 
+}
+
+extension GhosttySurfaceView {
+  override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+    guard let types = sender.draggingPasteboard.types else { return [] }
+    if Set(types).isDisjoint(with: Self.dropTypes) {
+      return []
+    }
+    return .copy
+  }
+
+  override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+    let pasteboard = sender.draggingPasteboard
+
+    let content: String?
+    if let url = pasteboard.string(forType: .URL) {
+      content = NSPasteboard.ghosttyEscape(url)
+    } else if let urls = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL], !urls.isEmpty {
+      content = urls
+        .map { NSPasteboard.ghosttyEscape($0.path) }
+        .joined(separator: " ")
+    } else if let str = pasteboard.string(forType: .string) {
+      content = str
+    } else {
+      content = nil
+    }
+
+    guard let content else { return false }
+
+    Task { @MainActor in
+      self.insertText(content, replacementRange: NSRange(location: 0, length: 0))
+    }
+    return true
+  }
 }
 
 extension GhosttySurfaceView: NSTextInputClient {

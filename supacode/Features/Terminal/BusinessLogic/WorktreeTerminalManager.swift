@@ -4,6 +4,13 @@ import Observation
 @MainActor
 @Observable
 final class WorktreeTerminalManager {
+  private static let notificationSound: NSSound? = {
+    guard let url = Bundle.main.url(forResource: "notification", withExtension: "wav") else {
+      return nil
+    }
+    return NSSound(contentsOf: url, byReference: true)
+  }()
+
   private let runtime: GhosttyRuntime
   private var states: [Worktree.ID: WorktreeTerminalState] = [:]
   private var notificationsEnabled = true
@@ -132,7 +139,7 @@ final class WorktreeTerminalManager {
 
   private func emit(_ event: TerminalClient.Event) {
     if case .notificationReceived = event, notificationSoundEnabled {
-      NSSound.beep()
+      Self.notificationSound?.play()
     }
     eventContinuation?.yield(event)
   }

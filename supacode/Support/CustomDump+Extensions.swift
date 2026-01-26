@@ -26,8 +26,12 @@ extension WorktreeInfoSnapshot: CustomDumpRepresentable {
       repositoryName: repositoryName,
       pr: pullRequestNumber.map { "#\($0)" },
       prState: pullRequestState,
+      isDraft: pullRequestIsDraft,
+      reviewDecision: pullRequestReviewDecision,
       workflow: workflowStatus,
-      conclusion: workflowConclusion
+      conclusion: workflowConclusion,
+      githubError: githubError,
+      ciError: ciError
     )
   }
 }

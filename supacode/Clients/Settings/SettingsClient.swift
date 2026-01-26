@@ -8,8 +8,12 @@ struct SettingsClient {
 
 extension SettingsClient: DependencyKey {
   static let liveValue = SettingsClient(
-    load: { SettingsStorage().load() },
-    save: { SettingsStorage().save($0) }
+    load: { SettingsStorage().load().global },
+    save: { settings in
+      var fileSettings = SettingsStorage().load()
+      fileSettings.global = settings
+      SettingsStorage().save(fileSettings)
+    }
   )
   static let testValue = SettingsClient(
     load: { .default },

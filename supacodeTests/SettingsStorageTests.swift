@@ -16,7 +16,7 @@ struct SettingsStorageTests {
     #expect(FileManager.default.fileExists(atPath: settingsURL.path(percentEncoded: false)))
 
     let data = try Data(contentsOf: settingsURL)
-    let decoded = try JSONDecoder().decode(GlobalSettings.self, from: data)
+    let decoded = try JSONDecoder().decode(SettingsFile.self, from: data)
     #expect(decoded == .default)
   }
 
@@ -27,11 +27,11 @@ struct SettingsStorageTests {
     let storage = SettingsStorage(settingsURL: settingsURL)
 
     var settings = storage.load()
-    settings.appearanceMode = .dark
+    settings.global.appearanceMode = .dark
     storage.save(settings)
 
     let reloaded = SettingsStorage(settingsURL: settingsURL).load()
-    #expect(reloaded.appearanceMode == .dark)
+    #expect(reloaded.global.appearanceMode == .dark)
   }
 
   @Test func invalidJSONResetsToDefaults() throws {
@@ -47,7 +47,7 @@ struct SettingsStorageTests {
     #expect(settings == .default)
 
     let data = try Data(contentsOf: settingsURL)
-    let decoded = try JSONDecoder().decode(GlobalSettings.self, from: data)
+    let decoded = try JSONDecoder().decode(SettingsFile.self, from: data)
     #expect(decoded == .default)
   }
 

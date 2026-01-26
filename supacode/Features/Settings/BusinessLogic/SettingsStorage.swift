@@ -7,18 +7,18 @@ nonisolated struct SettingsStorage {
     self.settingsURL = settingsURL
   }
 
-  func load() -> GlobalSettings {
+  func load() -> SettingsFile {
     if let data = try? Data(contentsOf: settingsURL),
-      let settings = try? JSONDecoder().decode(GlobalSettings.self, from: data)
+      let settings = try? JSONDecoder().decode(SettingsFile.self, from: data)
     {
       return settings
     }
-    let defaults = GlobalSettings.default
+    let defaults = SettingsFile.default
     save(defaults)
     return defaults
   }
 
-  func save(_ settings: GlobalSettings) {
+  func save(_ settings: SettingsFile) {
     do {
       let directory = settingsURL.deletingLastPathComponent()
       try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

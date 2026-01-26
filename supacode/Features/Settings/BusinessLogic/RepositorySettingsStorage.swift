@@ -2,32 +2,25 @@ import Foundation
 
 nonisolated struct RepositorySettingsStorage {
   func load(for rootURL: URL) -> RepositorySettings {
-    let settingsURL = settingsURL(for: rootURL)
-    if let data = try? Data(contentsOf: settingsURL),
-      let settings = try? JSONDecoder().decode(RepositorySettings.self, from: data)
-    {
+    let repositoryID = repositoryID(for: rootURL)
+    var fileSettings = SettingsStorage().load()
+    if let settings = fileSettings.repositories[repositoryID] {
       return settings
     }
     let defaults = RepositorySettings.default
-    save(defaults, for: rootURL)
+    fileSettings.repositories[repositoryID] = defaults
+    SettingsStorage().save(fileSettings)
     return defaults
   }
 
   func save(_ settings: RepositorySettings, for rootURL: URL) {
-    do {
-      let settingsURL = settingsURL(for: rootURL)
-      let directory = settingsURL.deletingLastPathComponent()
-      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-      let encoder = JSONEncoder()
-      encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-      let data = try encoder.encode(settings)
-      try data.write(to: settingsURL, options: [.atomic])
-    } catch {
-    }
+    let repositoryID = repositoryID(for: rootURL)
+    var fileSettings = SettingsStorage().load()
+    fileSettings.repositories[repositoryID] = settings
+    SettingsStorage().save(fileSettings)
   }
 
-  private func settingsURL(for rootURL: URL) -> URL {
-    SupacodePaths.repositoryDirectory(for: rootURL)
-      .appending(path: "settings.json", directoryHint: .notDirectory)
+  private func repositoryID(for rootURL: URL) -> String {
+    rootURL.standardizedFileURL.path(percentEncoded: false)
   }
 }

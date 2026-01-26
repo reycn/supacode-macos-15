@@ -67,7 +67,7 @@ lint: # Run swiftlint
 	mise exec -- swiftlint --quiet
 
 test: build-ghostty-xcframework
-	bash -o pipefail -c 'xcodebuild test -project supacode.xcodeproj -scheme supacode -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -skipMacroValidation 2>&1 | mise exec -- xcsift -qw --format toon'
+	bash -o pipefail -c 'xcodebuild test -project supacode.xcodeproj -scheme supacode -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -skipMacroValidation 2>&1 | mise exec -- xcsift -w --format toon'
 
 format: # Swift format
 	swift-format -p --in-place --recursive --configuration ./.swift-format.json supacode supacodeTests

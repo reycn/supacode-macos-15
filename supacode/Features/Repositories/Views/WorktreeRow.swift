@@ -6,6 +6,7 @@ struct WorktreeRow: View {
   let isMainWorktree: Bool
   let isLoading: Bool
   let taskStatus: WorktreeTaskStatus?
+  let showsNotificationIndicator: Bool
   let shortcutHint: String?
 
   var body: some View {
@@ -25,6 +26,13 @@ struct WorktreeRow: View {
       }
       Text(name)
       Spacer(minLength: 8)
+      if showsNotificationIndicator {
+        Image(systemName: "bell.fill")
+          .font(.caption)
+          .foregroundStyle(.orange)
+          .help("Unread notifications (no shortcut)")
+          .accessibilityLabel("Unread notifications")
+      }
       if let shortcutHint {
         ShortcutHintView(text: shortcutHint, color: .secondary)
       }

@@ -74,7 +74,12 @@ struct AppFeature {
         }
         let settings = repositorySettingsClient.load(worktree.repositoryRootURL)
         state.openActionSelection = OpenWorktreeAction.fromSettingsID(settings.openActionID)
-        return .send(.worktreeInfo(.worktreeChanged(worktree)))
+        return .merge(
+          .send(.worktreeInfo(.worktreeChanged(worktree))),
+          .run { _ in
+            await terminalClient.clearNotificationIndicator(worktree)
+          }
+        )
 
       case .repositories(.delegate(.repositoriesChanged(let repositories))):
         let ids = Set(repositories.flatMap { $0.worktrees.map(\.id) })
@@ -83,13 +88,18 @@ struct AppFeature {
         }
 
       case .settings(.delegate(.settingsChanged(let settings))):
-        return .send(
-          .updates(
-            .applySettings(
-              automaticallyChecks: settings.updatesAutomaticallyCheckForUpdates,
-              automaticallyDownloads: settings.updatesAutomaticallyDownloadUpdates
+        return .merge(
+          .send(
+            .updates(
+              .applySettings(
+                automaticallyChecks: settings.updatesAutomaticallyCheckForUpdates,
+                automaticallyDownloads: settings.updatesAutomaticallyDownloadUpdates
+              )
             )
-          )
+          ),
+          .run { _ in
+            await terminalClient.setNotificationsEnabled(settings.inAppNotificationsEnabled)
+          }
         )
 
       case .openActionSelectionChanged(let action):

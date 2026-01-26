@@ -3,6 +3,7 @@ import SwiftUI
 
 struct WorktreeInfoView: View {
   @Bindable var store: StoreOf<WorktreeInfoFeature>
+  let terminalManager: WorktreeTerminalManager
 
   var body: some View {
     let state = store.state
@@ -23,7 +24,8 @@ struct WorktreeInfoView: View {
           }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-      } else if let snapshot = state.snapshot {
+      } else if let snapshot = state.snapshot, let worktree = state.worktree {
+        let terminalState = terminalManager.stateIfExists(for: worktree.id)
         ScrollView {
           VStack(alignment: .leading) {
             if case .failed(let message) = state.status {
@@ -126,6 +128,10 @@ struct WorktreeInfoView: View {
                 Text(nextRefresh, style: .relative)
               }
               .foregroundStyle(.secondary)
+            }
+
+            if let terminalState {
+              WorktreeNotificationsListView(state: terminalState, worktreeName: worktree.name)
             }
           }
           .frame(maxWidth: .infinity, alignment: .leading)

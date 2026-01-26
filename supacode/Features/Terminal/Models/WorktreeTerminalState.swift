@@ -15,6 +15,9 @@ final class WorktreeTerminalState {
   private var focusedSurfaceIdByTab: [TerminalTabID: UUID] = [:]
   private var tabIsRunningById: [TerminalTabID: Bool] = [:]
   private var pendingSetupScript: Bool
+  var notifications: [WorktreeTerminalNotification] = []
+  var notificationsEnabled = true
+  var hasUnseenNotification = false
 
   init(runtime: GhosttyRuntime, worktree: Worktree, runSetupScript: Bool = false) {
     self.runtime = runtime
@@ -61,6 +64,18 @@ final class WorktreeTerminalState {
   func focusSelectedTab() {
     guard let tabId = tabManager.selectedTabId else { return }
     focusSurface(in: tabId)
+  }
+
+  @discardableResult
+  func focusSurface(id: UUID) -> Bool {
+    guard let tabId = tabId(containing: id),
+      let surface = surfaces[id]
+    else {
+      return false
+    }
+    tabManager.selectTab(tabId)
+    focusSurface(surface, in: tabId)
+    return true
   }
 
   @discardableResult
@@ -242,6 +257,17 @@ final class WorktreeTerminalState {
     tabManager.closeAll()
   }
 
+  func setNotificationsEnabled(_ enabled: Bool) {
+    notificationsEnabled = enabled
+    if !enabled {
+      hasUnseenNotification = false
+    }
+  }
+
+  func clearNotificationIndicator() {
+    hasUnseenNotification = false
+  }
+
   private func setupScriptInput(shouldRun: Bool) -> String? {
     guard shouldRun else { return nil }
     let settings = settingsStorage.load(for: worktree.repositoryRootURL)
@@ -289,6 +315,10 @@ final class WorktreeTerminalState {
       guard let self else { return }
       self.updateRunningState(for: tabId)
     }
+    view.bridge.onDesktopNotification = { [weak self, weak view] title, body in
+      guard let self, let view else { return }
+      self.appendNotification(title: title, body: body, surfaceId: view.id)
+    }
     view.bridge.onCloseRequest = { [weak self, weak view] processAlive in
       guard let self, let view else { return }
       self.handleCloseRequest(for: view, processAlive: processAlive)
@@ -326,6 +356,19 @@ final class WorktreeTerminalState {
     focusedSurfaceIdByTab[tabId] = surface.id
     surface.requestFocus()
     updateTabTitle(for: tabId)
+  }
+
+  private func appendNotification(title: String, body: String, surfaceId: UUID) {
+    guard notificationsEnabled else { return }
+    let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+    let trimmedBody = body.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !(trimmedTitle.isEmpty && trimmedBody.isEmpty) else { return }
+    notifications.append(WorktreeTerminalNotification(
+      surfaceId: surfaceId,
+      title: trimmedTitle,
+      body: trimmedBody
+    ))
+    hasUnseenNotification = true
   }
 
   private func removeTree(for tabId: TerminalTabID) {

@@ -76,6 +76,12 @@ struct SupacodeApp: App {
           },
           prune: { ids in
             terminalManager.prune(keeping: ids)
+          },
+          setNotificationsEnabled: { enabled in
+            terminalManager.setNotificationsEnabled(enabled)
+          },
+          clearNotificationIndicator: { worktree in
+            terminalManager.clearNotificationIndicator(for: worktree)
           }
         )
       }

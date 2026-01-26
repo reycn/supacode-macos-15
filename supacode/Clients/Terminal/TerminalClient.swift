@@ -5,6 +5,8 @@ struct TerminalClient {
   var closeFocusedTab: @MainActor @Sendable (Worktree) -> Bool
   var closeFocusedSurface: @MainActor @Sendable (Worktree) -> Bool
   var prune: @MainActor @Sendable (Set<Worktree.ID>) -> Void
+  var setNotificationsEnabled: @MainActor @Sendable (Bool) -> Void
+  var clearNotificationIndicator: @MainActor @Sendable (Worktree) -> Void
 }
 
 extension TerminalClient: DependencyKey {
@@ -18,6 +20,12 @@ extension TerminalClient: DependencyKey {
     },
     prune: { _ in
       fatalError("TerminalClient.prune not configured")
+    },
+    setNotificationsEnabled: { _ in
+      fatalError("TerminalClient.setNotificationsEnabled not configured")
+    },
+    clearNotificationIndicator: { _ in
+      fatalError("TerminalClient.clearNotificationIndicator not configured")
     }
   )
 
@@ -25,7 +33,9 @@ extension TerminalClient: DependencyKey {
     createTab: { _ in },
     closeFocusedTab: { _ in false },
     closeFocusedSurface: { _ in false },
-    prune: { _ in }
+    prune: { _ in },
+    setNotificationsEnabled: { _ in },
+    clearNotificationIndicator: { _ in }
   )
 }
 

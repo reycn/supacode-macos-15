@@ -11,6 +11,7 @@ struct TerminalClient {
     case closeFocusedSurface(Worktree)
     case prune(Set<Worktree.ID>)
     case setNotificationsEnabled(Bool)
+    case setNotificationSoundEnabled(Bool)
     case clearNotificationIndicator(Worktree)
     case setSelectedWorktreeID(Worktree.ID?)
   }

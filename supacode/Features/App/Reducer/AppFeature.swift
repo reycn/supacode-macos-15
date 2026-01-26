@@ -111,6 +111,7 @@ struct AppFeature {
           ),
           .run { _ in
             await terminalClient.send(.setNotificationsEnabled(settings.inAppNotificationsEnabled))
+            await terminalClient.send(.setNotificationSoundEnabled(settings.notificationSoundEnabled))
           }
         )
 

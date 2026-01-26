@@ -1,3 +1,4 @@
+import AppKit
 import Observation
 
 @MainActor
@@ -6,6 +7,7 @@ final class WorktreeTerminalManager {
   private let runtime: GhosttyRuntime
   private var states: [Worktree.ID: WorktreeTerminalState] = [:]
   private var notificationsEnabled = true
+  private var notificationSoundEnabled = true
   private var eventContinuation: AsyncStream<TerminalClient.Event>.Continuation?
   var selectedWorktreeID: Worktree.ID?
 
@@ -25,6 +27,8 @@ final class WorktreeTerminalManager {
       prune(keeping: ids)
     case .setNotificationsEnabled(let enabled):
       setNotificationsEnabled(enabled)
+    case .setNotificationSoundEnabled(let enabled):
+      notificationSoundEnabled = enabled
     case .clearNotificationIndicator(let worktree):
       clearNotificationIndicator(for: worktree)
     case .setSelectedWorktreeID(let id):
@@ -127,6 +131,9 @@ final class WorktreeTerminalManager {
   }
 
   private func emit(_ event: TerminalClient.Event) {
+    if case .notificationReceived = event, notificationSoundEnabled {
+      NSSound.beep()
+    }
     eventContinuation?.yield(event)
   }
 }

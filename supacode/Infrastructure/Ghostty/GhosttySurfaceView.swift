@@ -456,7 +456,11 @@ final class GhosttySurfaceView: NSView, Identifiable {
   private func handleGhosttyBinding(_ event: NSEvent, surface: ghostty_surface_t) -> Bool {
     let (translationEvent, translationMods) = translationState(event, surface: surface)
     var key = ghosttyKeyEvent(
-      translationEvent, action: GHOSTTY_ACTION_PRESS, translationMods: translationMods)
+      translationEvent,
+      action: GHOSTTY_ACTION_PRESS,
+      originalMods: event.modifierFlags,
+      translationMods: translationMods
+    )
     let text = ghosttyCharacters(translationEvent) ?? ""
     if let codepoint = text.utf8.first, codepoint >= 0x20 {
       return handleTextBinding(text, event: event, key: &key, surface: surface)
@@ -738,6 +742,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
     var key = ghosttyKeyEvent(
       resolvedEvent,
       action: action,
+      originalMods: event.modifierFlags,
       translationMods: resolvedMods,
       composing: composing
     )
@@ -799,6 +804,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
   private func ghosttyKeyEvent(
     _ event: NSEvent,
     action: ghostty_input_action_e,
+    originalMods: NSEvent.ModifierFlags,
     translationMods: NSEvent.ModifierFlags,
     composing: Bool = false
   ) -> ghostty_input_key_s {
@@ -807,7 +813,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
     keyEvent.keycode = UInt32(event.keyCode)
     keyEvent.text = nil
     keyEvent.composing = composing
-    keyEvent.mods = ghosttyMods(event.modifierFlags)
+    keyEvent.mods = ghosttyMods(originalMods)
     keyEvent.consumed_mods = ghosttyMods(translationMods.subtracting([.control, .command]))
     keyEvent.unshifted_codepoint = 0
     if event.type == .keyDown || event.type == .keyUp {

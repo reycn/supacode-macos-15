@@ -15,7 +15,7 @@ struct WorktreeRow: View {
     let branchIconName = isMainWorktree ? "star.fill" : (isPinned ? "pin.fill" : "arrow.triangle.branch")
     let hasInfo = info?.addedLines != nil || info?.removedLines != nil
     let isMerged = info?.pullRequest?.state.uppercased() == "MERGED"
-    let mergedColor = Color(red: 130.0 / 255.0, green: 80.0 / 255.0, blue: 223.0 / 255.0)
+    let mergedColor = Color(red: 137.0 / 255.0, green: 87.0 / 255.0, blue: 229.0 / 255.0)
     HStack(alignment: .center) {
       ZStack {
         if showsNotificationIndicator {

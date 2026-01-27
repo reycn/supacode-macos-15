@@ -10,7 +10,6 @@ struct WorktreeDetailView: View {
     detailBody(state: store.state)
   }
 
-  @ViewBuilder
   private func detailBody(state: AppFeature.State) -> some View {
     let repositories = state.repositories
     let selectedRow = repositories.selectedRow(for: repositories.selectedWorktreeID)
@@ -30,7 +29,22 @@ struct WorktreeDetailView: View {
     let closeSurfaceAction: (() -> Void)? = isOpenDisabled
       ? nil
       : { store.send(.closeSurface) }
-    Group {
+    let startSearchAction: (() -> Void)? = isOpenDisabled
+      ? nil
+      : { store.send(.startSearch) }
+    let searchSelectionAction: (() -> Void)? = isOpenDisabled
+      ? nil
+      : { store.send(.searchSelection) }
+    let navigateSearchNextAction: (() -> Void)? = isOpenDisabled
+      ? nil
+      : { store.send(.navigateSearchNext) }
+    let navigateSearchPreviousAction: (() -> Void)? = isOpenDisabled
+      ? nil
+      : { store.send(.navigateSearchPrevious) }
+    let endSearchAction: (() -> Void)? = isOpenDisabled
+      ? nil
+      : { store.send(.endSearch) }
+    let content = Group {
       if let loadingInfo {
         WorktreeLoadingView(info: loadingInfo)
       } else if let selectedWorktree {
@@ -60,10 +74,46 @@ struct WorktreeDetailView: View {
         showExtras: commandKeyObserver.isPressed
       )
     }
-    .focusedSceneValue(\.newTerminalAction, newTerminalAction)
-    .focusedSceneValue(\.closeTabAction, closeTabAction)
-    .focusedSceneValue(\.closeSurfaceAction, closeSurfaceAction)
-    .focusedSceneValue(\.openSelectedWorktreeAction, openSelectedWorktreeAction)
+    let actions = FocusedActions(
+      openSelectedWorktree: openSelectedWorktreeAction,
+      newTerminal: newTerminalAction,
+      closeTab: closeTabAction,
+      closeSurface: closeSurfaceAction,
+      startSearch: startSearchAction,
+      searchSelection: searchSelectionAction,
+      navigateSearchNext: navigateSearchNextAction,
+      navigateSearchPrevious: navigateSearchPreviousAction,
+      endSearch: endSearchAction
+    )
+    return applyFocusedActions(content: content, actions: actions)
+  }
+
+  private func applyFocusedActions<Content: View>(
+    content: Content,
+    actions: FocusedActions
+  ) -> some View {
+    content
+      .focusedSceneValue(\.openSelectedWorktreeAction, actions.openSelectedWorktree)
+      .focusedSceneValue(\.newTerminalAction, actions.newTerminal)
+      .focusedSceneValue(\.closeTabAction, actions.closeTab)
+      .focusedSceneValue(\.closeSurfaceAction, actions.closeSurface)
+      .focusedSceneValue(\.startSearchAction, actions.startSearch)
+      .focusedSceneValue(\.searchSelectionAction, actions.searchSelection)
+      .focusedSceneValue(\.navigateSearchNextAction, actions.navigateSearchNext)
+      .focusedSceneValue(\.navigateSearchPreviousAction, actions.navigateSearchPrevious)
+      .focusedSceneValue(\.endSearchAction, actions.endSearch)
+  }
+
+  private struct FocusedActions {
+    let openSelectedWorktree: (() -> Void)?
+    let newTerminal: (() -> Void)?
+    let closeTab: (() -> Void)?
+    let closeSurface: (() -> Void)?
+    let startSearch: (() -> Void)?
+    let searchSelection: (() -> Void)?
+    let navigateSearchNext: (() -> Void)?
+    let navigateSearchPrevious: (() -> Void)?
+    let endSearch: (() -> Void)?
   }
 
   private func loadingInfo(

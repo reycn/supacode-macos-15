@@ -38,11 +38,11 @@
 		D6A1CB2F2F1F4A48004FDABD /* GhosttyKit.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = GhosttyKit.xcframework; sourceTree = "<group>"; };
 		D6A1CB342F1F4AC2004FDABD /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
 		D6F821012F1FCBC1004B4174 /* supacodeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = supacodeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		ED463971B9461E5ECBBF65FE /* XcodeStyleToolbarViews.swift */ = {isa = PBXFileReference; explicitFileType = sourcecode.swift; lastKnownFileType = sourcecode.swift; name = XcodeStyleToolbarViews.swift; path = XcodeStyleToolbarViews.swift; sourceTree = "<group>"; };
+		ED463971B9461E5ECBBF65FE /* XcodeStyleToolbarViews.swift */ = {isa = PBXFileReference; explicitFileType = sourcecode.swift; path = XcodeStyleToolbarViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		D4C9CFFBF3C440848B2DA2B0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		D4C9CFFBF3C440848B2DA2B0 /* Exceptions for "supacode" folder in "supacode" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -55,7 +55,7 @@
 		D69CE04C2F1F378200584C57 /* supacode */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				D4C9CFFBF3C440848B2DA2B0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+				D4C9CFFBF3C440848B2DA2B0 /* Exceptions for "supacode" folder in "supacode" target */,
 			);
 			path = supacode;
 			sourceTree = "<group>";
@@ -97,7 +97,6 @@
 			children = (
 				7CB8E823F75AD0C43E69F80D /* Features */,
 			);
-			name = supacode;
 			path = supacode;
 			sourceTree = "<group>";
 		};
@@ -106,7 +105,6 @@
 			children = (
 				ABD2418FB894805F47945939 /* Repositories */,
 			);
-			name = Features;
 			path = Features;
 			sourceTree = "<group>";
 		};
@@ -115,7 +113,6 @@
 			children = (
 				ED463971B9461E5ECBBF65FE /* XcodeStyleToolbarViews.swift */,
 			);
-			name = Views;
 			path = Views;
 			sourceTree = "<group>";
 		};
@@ -124,7 +121,6 @@
 			children = (
 				A5590D708C914844C4CD97D7 /* Views */,
 			);
-			name = Repositories;
 			path = Repositories;
 			sourceTree = "<group>";
 		};
@@ -444,7 +440,7 @@
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 41;
+				CURRENT_PROJECT_VERSION = 42;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
@@ -466,7 +462,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.2.39;
+				MARKETING_VERSION = 0.2.40;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lc++",
@@ -498,7 +494,7 @@
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 41;
+				CURRENT_PROJECT_VERSION = 42;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
@@ -520,7 +516,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.2.39;
+				MARKETING_VERSION = 0.2.40;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lc++",
@@ -549,12 +545,12 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 41;
+				CURRENT_PROJECT_VERSION = 42;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.1;
-				MARKETING_VERSION = 0.2.39;
+				MARKETING_VERSION = 0.2.40;
 				PRODUCT_BUNDLE_IDENTIFIER = app.supabit.supacodeTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -571,12 +567,12 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 41;
+				CURRENT_PROJECT_VERSION = 42;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.1;
-				MARKETING_VERSION = 0.2.39;
+				MARKETING_VERSION = 0.2.40;
 				PRODUCT_BUNDLE_IDENTIFIER = app.supabit.supacodeTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;

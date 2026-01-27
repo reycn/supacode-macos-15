@@ -275,7 +275,12 @@ final class GhosttySurfaceBridge {
       return true
 
     case GHOSTTY_ACTION_START_SEARCH:
-      state.searchNeedle = string(from: action.action.start_search.needle)
+      let needle = string(from: action.action.start_search.needle) ?? ""
+      if !needle.isEmpty {
+        state.searchNeedle = needle
+      } else if state.searchNeedle == nil {
+        state.searchNeedle = ""
+      }
       state.searchFocusCount += 1
       return true
 

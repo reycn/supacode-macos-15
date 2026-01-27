@@ -193,15 +193,30 @@ final class WorktreeInfoWatcherManager {
   }
 
   private func stopAll() {
-    for (id, watcher) in headWatchers {
+    for watcher in headWatchers.values {
       watcher.source.cancel()
-      branchDebounceTasks.removeValue(forKey: id)?.cancel()
-      filesDebounceTasks.removeValue(forKey: id)?.cancel()
-      restartTasks.removeValue(forKey: id)?.cancel()
-      pullRequestTasks.removeValue(forKey: id)?.task.cancel()
-      lineChangeTasks.removeValue(forKey: id)?.task.cancel()
+    }
+    for task in branchDebounceTasks.values {
+      task.cancel()
+    }
+    for task in filesDebounceTasks.values {
+      task.cancel()
+    }
+    for task in restartTasks.values {
+      task.cancel()
+    }
+    for task in pullRequestTasks.values {
+      task.task.cancel()
+    }
+    for task in lineChangeTasks.values {
+      task.task.cancel()
     }
     headWatchers.removeAll()
+    branchDebounceTasks.removeAll()
+    filesDebounceTasks.removeAll()
+    restartTasks.removeAll()
+    pullRequestTasks.removeAll()
+    lineChangeTasks.removeAll()
     worktrees.removeAll()
     selectedWorktreeID = nil
     eventContinuation?.finish()

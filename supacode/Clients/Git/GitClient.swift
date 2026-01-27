@@ -196,20 +196,12 @@ struct GitClient {
   nonisolated func lineChanges(at worktreeURL: URL) async -> (added: Int, removed: Int)? {
     let path = worktreeURL.path(percentEncoded: false)
     do {
-      let unstaged = try await runGit(
+      let diff = try await runGit(
         operation: .lineChanges,
-        arguments: ["-C", path, "diff", "--numstat"]
+        arguments: ["-C", path, "diff", "HEAD", "--numstat"]
       )
-      let staged = try await runGit(
-        operation: .lineChanges,
-        arguments: ["-C", path, "diff", "--cached", "--numstat"]
-      )
-      let unstagedChanges = parseNumstat(unstaged)
-      let stagedChanges = parseNumstat(staged)
-      return (
-        added: unstagedChanges.added + stagedChanges.added,
-        removed: unstagedChanges.removed + stagedChanges.removed
-      )
+      let changes = parseNumstat(diff)
+      return (added: changes.added, removed: changes.removed)
     } catch {
       return nil
     }

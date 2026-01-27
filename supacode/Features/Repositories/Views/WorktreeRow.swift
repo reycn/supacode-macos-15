@@ -47,6 +47,14 @@ struct WorktreeRow: View {
         }
       }
       Spacer(minLength: 8)
+      if taskStatus == .running {
+        Image(systemName: "play.fill")
+          .font(.caption)
+          .monospaced()
+          .foregroundStyle(.green)
+          .help("Task running")
+          .accessibilityLabel("Task running")
+      }
       if let shortcutHint {
         ShortcutHintView(text: shortcutHint, color: .secondary)
       }

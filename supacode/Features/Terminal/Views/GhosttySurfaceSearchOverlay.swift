@@ -25,15 +25,7 @@ struct GhosttySurfaceSearchOverlay: View {
 
   var body: some View {
     GeometryReader { geo in
-      ZStack {
-        GhosttySearchDragSurface(
-          dragOffset: $dragOffset,
-          corner: $corner,
-          barSize: barSize,
-          containerSize: geo.size,
-          padding: overlayPadding
-        )
-        HStack(spacing: 4) {
+      HStack(spacing: 4) {
         GhosttySearchField(
           text: $searchText,
           isFocused: isSearchFieldFocused,
@@ -71,29 +63,28 @@ struct GhosttySurfaceSearchOverlay: View {
         }
         .buttonStyle(GhosttySearchButtonStyle())
         .help(helpText("End Search", shortcut: ghosttyShortcuts.display(for: "end_search")))
-        }
       }
       .padding(8)
       .background(.background)
       .clipShape(GhosttySearchOverlayShape())
       .shadow(radius: 4)
-    .onAppear {
-      focusSearchField()
-      scheduleSearch(searchText)
-    }
-    .onChange(of: searchText) { _, newValue in
-      scheduleSearch(newValue)
-    }
-    .onChange(of: state.searchNeedle) { _, newValue in
-      guard let newValue else { return }
-      focusSearchField()
-      if !newValue.isEmpty, newValue != searchText {
-        searchText = newValue
+      .onAppear {
+        focusSearchField()
+        scheduleSearch(searchText)
       }
-    }
-    .onChange(of: state.searchFocusCount) { _, _ in
-      focusSearchField()
-    }
+      .onChange(of: searchText) { _, newValue in
+        scheduleSearch(newValue)
+      }
+      .onChange(of: state.searchNeedle) { _, newValue in
+        guard let newValue else { return }
+        focusSearchField()
+        if !newValue.isEmpty, newValue != searchText {
+          searchText = newValue
+        }
+      }
+      .onChange(of: state.searchFocusCount) { _, _ in
+        focusSearchField()
+      }
       .onDisappear {
         searchTask?.cancel()
         searchTask = nil
@@ -108,6 +99,24 @@ struct GhosttySurfaceSearchOverlay: View {
       .padding(overlayPadding)
       .offset(dragOffset)
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: corner.alignment)
+      .gesture(
+        DragGesture()
+          .onChanged { value in
+            dragOffset = value.translation
+          }
+          .onEnded { value in
+            let centerPos = centerPosition(for: corner, in: geo.size, barSize: barSize)
+            let newCenter = CGPoint(
+              x: centerPos.x + value.translation.width,
+              y: centerPos.y + value.translation.height
+            )
+            let newCorner = closestCorner(to: newCenter, in: geo.size)
+            withAnimation(.easeOut(duration: 0.2)) {
+              corner = newCorner
+              dragOffset = .zero
+            }
+          }
+      )
     }
   }
 
@@ -138,7 +147,12 @@ struct GhosttySurfaceSearchOverlay: View {
 
     let text = needle
     searchTask = Task { @MainActor in
-      try? await Task.sleep(for: .milliseconds(300))
+      do {
+        try await Task.sleep(for: .milliseconds(300))
+      } catch {
+        return
+      }
+      guard !Task.isCancelled else { return }
       emitSearch(text)
     }
   }
@@ -172,6 +186,36 @@ struct GhosttySurfaceSearchOverlay: View {
     guard let shortcut else { return title }
     return "\(title) (\(shortcut))"
   }
+
+  private func centerPosition(
+    for corner: GhosttySearchCorner,
+    in containerSize: CGSize,
+    barSize: CGSize
+  ) -> CGPoint {
+    let halfWidth = barSize.width / 2 + overlayPadding
+    let halfHeight = barSize.height / 2 + overlayPadding
+
+    switch corner {
+    case .topLeft:
+      return CGPoint(x: halfWidth, y: halfHeight)
+    case .topRight:
+      return CGPoint(x: containerSize.width - halfWidth, y: halfHeight)
+    case .bottomLeft:
+      return CGPoint(x: halfWidth, y: containerSize.height - halfHeight)
+    case .bottomRight:
+      return CGPoint(x: containerSize.width - halfWidth, y: containerSize.height - halfHeight)
+    }
+  }
+
+  private func closestCorner(to point: CGPoint, in containerSize: CGSize) -> GhosttySearchCorner {
+    let midX = containerSize.width / 2
+    let midY = containerSize.height / 2
+
+    if point.x < midX {
+      return point.y < midY ? .topLeft : .bottomLeft
+    }
+    return point.y < midY ? .topRight : .bottomRight
+  }
 }
 
 private enum GhosttySearchCorner {
@@ -196,63 +240,6 @@ private struct GhosttySearchOverlayShape: Shape {
       return ConcentricRectangle(corners: .concentric(minimum: 8), isUniform: true).path(in: rect)
     }
     return RoundedRectangle(cornerRadius: 8).path(in: rect)
-  }
-}
-
-private struct GhosttySearchDragSurface: View {
-  @Binding var dragOffset: CGSize
-  @Binding var corner: GhosttySearchCorner
-  let barSize: CGSize
-  let containerSize: CGSize
-  let padding: CGFloat
-
-  var body: some View {
-    Color.clear
-      .contentShape(.rect)
-      .gesture(
-        DragGesture()
-          .onChanged { value in
-            dragOffset = value.translation
-          }
-          .onEnded { value in
-            let centerPos = centerPosition(for: corner)
-            let newCenter = CGPoint(
-              x: centerPos.x + value.translation.width,
-              y: centerPos.y + value.translation.height
-            )
-            let newCorner = closestCorner(to: newCenter)
-            withAnimation(.easeOut(duration: 0.2)) {
-              corner = newCorner
-              dragOffset = .zero
-            }
-          }
-      )
-  }
-
-  private func centerPosition(for corner: GhosttySearchCorner) -> CGPoint {
-    let halfWidth = barSize.width / 2 + padding
-    let halfHeight = barSize.height / 2 + padding
-
-    switch corner {
-    case .topLeft:
-      return CGPoint(x: halfWidth, y: halfHeight)
-    case .topRight:
-      return CGPoint(x: containerSize.width - halfWidth, y: halfHeight)
-    case .bottomLeft:
-      return CGPoint(x: halfWidth, y: containerSize.height - halfHeight)
-    case .bottomRight:
-      return CGPoint(x: containerSize.width - halfWidth, y: containerSize.height - halfHeight)
-    }
-  }
-
-  private func closestCorner(to point: CGPoint) -> GhosttySearchCorner {
-    let midX = containerSize.width / 2
-    let midY = containerSize.height / 2
-
-    if point.x < midX {
-      return point.y < midY ? .topLeft : .bottomLeft
-    }
-    return point.y < midY ? .topRight : .bottomRight
   }
 }
 

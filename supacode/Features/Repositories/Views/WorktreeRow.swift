@@ -14,6 +14,8 @@ struct WorktreeRow: View {
     let showsSpinner = isLoading || taskStatus == .running
     let branchIconName = isMainWorktree ? "star.fill" : (isPinned ? "pin.fill" : "arrow.triangle.branch")
     let hasInfo = info?.addedLines != nil || info?.removedLines != nil
+    let isMerged = info?.pullRequest?.state.uppercased() == "MERGED"
+    let mergedColor = Color(red: 130.0 / 255.0, green: 80.0 / 255.0, blue: 223.0 / 255.0)
     HStack(alignment: .center) {
       ZStack {
         if showsNotificationIndicator {
@@ -55,6 +57,20 @@ struct WorktreeRow: View {
           .foregroundStyle(.green)
           .help("Task running")
           .accessibilityLabel("Task running")
+      }
+      if isMerged {
+        Text("MERGED")
+          .font(.caption2)
+          .monospaced()
+          .foregroundStyle(mergedColor)
+          .padding(.horizontal, 6)
+          .padding(.vertical, 2)
+          .overlay {
+            RoundedRectangle(cornerRadius: 4)
+              .stroke(mergedColor, lineWidth: 1)
+          }
+          .help("Pull request merged")
+          .accessibilityLabel("Merged")
       }
       if let shortcutHint {
         ShortcutHintView(text: shortcutHint, color: .secondary)

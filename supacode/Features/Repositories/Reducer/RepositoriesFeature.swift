@@ -500,16 +500,16 @@ struct RepositoriesFeature {
           let worktreeURL = worktree.workingDirectory
           return .run { send in
             guard await githubCLI.isAvailable() else {
-              await send(.worktreePullRequestLoaded(worktreeID: worktreeID, number: nil))
               return
             }
-            do {
-              let pullRequest = try await githubCLI.currentPullRequest(worktreeURL)
+            let result = await Result { try await githubCLI.currentPullRequest(worktreeURL) }
+            switch result {
+            case .success(let pullRequest):
               await send(
                 .worktreePullRequestLoaded(worktreeID: worktreeID, number: pullRequest?.number)
               )
-            } catch {
-              await send(.worktreePullRequestLoaded(worktreeID: worktreeID, number: nil))
+            case .failure:
+              return
             }
           }
         }

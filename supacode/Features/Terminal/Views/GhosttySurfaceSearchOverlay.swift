@@ -337,6 +337,10 @@ private struct GhosttySearchField: NSViewRepresentable {
     var onSubmit: ((Bool) -> Void)?
     var onEscape: (() -> Void)?
 
+    override func cancelOperation(_ sender: Any?) {
+      onEscape?()
+    }
+
     override func keyDown(with event: NSEvent) {
       switch event.keyCode {
       case 36, 76:

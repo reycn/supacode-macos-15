@@ -5,6 +5,7 @@ struct WorktreeTerminalTabsView: View {
   let worktree: Worktree
   let manager: WorktreeTerminalManager
   let shouldRunSetupScript: Bool
+  let forceAutoFocus: Bool
   let createTab: () -> Void
 
   var body: some View {
@@ -50,6 +51,9 @@ struct WorktreeTerminalTabsView: View {
   }
 
   private var shouldAutoFocusTerminal: Bool {
+    if forceAutoFocus {
+      return true
+    }
     guard let responder = NSApp.keyWindow?.firstResponder else { return true }
     return !(responder is NSTableView) && !(responder is NSOutlineView)
   }

@@ -7,7 +7,8 @@ final class GithubSettingsViewModel {
     case loading
     case notInstalled
     case notAuthenticated
-    case authenticated(username: String)
+    case authenticated(username: String, host: String)
+    case error(String)
   }
 
   var state: State = .loading
@@ -24,10 +25,13 @@ final class GithubSettingsViewModel {
     }
 
     do {
-      let username = try await githubCLI.currentUser()
-      state = .authenticated(username: username)
+      if let status = try await githubCLI.authStatus() {
+        state = .authenticated(username: status.username, host: status.host)
+      } else {
+        state = .notAuthenticated
+      }
     } catch {
-      state = .notAuthenticated
+      state = .error(error.localizedDescription)
     }
   }
 }
@@ -66,10 +70,23 @@ struct GithubSettingsView: View {
                 .font(.callout)
             }
 
-          case .authenticated(let username):
+          case .authenticated(let username, let host):
             LabeledContent("Signed in as") {
               Text(username)
                 .monospaced()
+            }
+            LabeledContent("Host") {
+              Text(host)
+                .monospaced()
+            }
+
+          case .error(let message):
+            VStack(alignment: .leading, spacing: 8) {
+              Label("Error checking status", systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.red)
+              Text(message)
+                .foregroundStyle(.secondary)
+                .font(.callout)
             }
           }
         }
@@ -78,10 +95,10 @@ struct GithubSettingsView: View {
 
       if case .notInstalled = viewModel.state {
         HStack {
-          Button("Install via Homebrew") {
+          Button("Get GitHub CLI") {
             NSWorkspace.shared.open(URL(string: "https://cli.github.com")!)
           }
-          .help("Open GitHub CLI installation page")
+          .help("Open GitHub CLI website")
           Spacer()
         }
         .padding(.top)

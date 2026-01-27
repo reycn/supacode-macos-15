@@ -181,6 +181,7 @@ final class WorktreeInfoWatcherManager {
       return
     }
     scheduleBranchChanged(worktreeID: worktreeID)
+    scheduleFilesChanged(worktreeID: worktreeID)
   }
 
   private func scheduleBranchChanged(worktreeID: Worktree.ID) {

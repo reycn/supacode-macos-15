@@ -205,12 +205,6 @@ struct WorktreeDetailView: View {
     ToolbarItem(placement: .navigation) {
       WorktreeDetailTitleView(
         branchName: toolbarState.branchName,
-        runScriptEnabled: toolbarState.runScriptEnabled,
-        runScriptIsRunning: toolbarState.runScriptIsRunning,
-        runScriptHelpText: toolbarState.runScriptHelpText,
-        stopRunScriptHelpText: toolbarState.stopRunScriptHelpText,
-        runScriptAction: { store.send(.runScript) },
-        stopRunScriptAction: { store.send(.stopRunScript) },
         onSubmit: { newBranch in
           store.send(.repositories(.requestRenameBranch(worktreeID, newBranch)))
         }
@@ -219,16 +213,22 @@ struct WorktreeDetailView: View {
     ToolbarItem(placement: .principal) {
       XcodeStyleStatusView()
     }
+    ToolbarItem(placement: .primaryAction) {
+      RunScriptToolbarButton(
+        isRunning: toolbarState.runScriptIsRunning,
+        isEnabled: toolbarState.runScriptEnabled,
+        runHelpText: toolbarState.runScriptHelpText,
+        stopHelpText: toolbarState.stopRunScriptHelpText,
+        runAction: { store.send(.runScript) },
+        stopAction: { store.send(.stopRunScript) }
+      )
+    }
     #if DEBUG
     ToolbarItem(placement: .automatic) {
       openMenu(
         openActionSelection: toolbarState.openActionSelection,
         showExtras: toolbarState.showExtras
       )
-    }
-
-    ToolbarItem(placement: .primaryAction) {
-      Button("PR Button") { }.padding(.horizontal)
     }
     #endif
   }
@@ -284,5 +284,56 @@ struct WorktreeDetailView: View {
     isDefault
       ? "\(action.title) (\(AppShortcuts.openFinder.display))"
       : action.title
+  }
+}
+
+private struct RunScriptToolbarButton: View {
+  let isRunning: Bool
+  let isEnabled: Bool
+  let runHelpText: String
+  let stopHelpText: String
+  let runAction: () -> Void
+  let stopAction: () -> Void
+
+  var body: some View {
+    if isRunning {
+      button(
+        title: "Stop",
+        systemImage: "stop.fill",
+        helpText: stopHelpText,
+        isEnabled: true,
+        action: stopAction
+      )
+    } else {
+      button(
+        title: "Run",
+        systemImage: "play.fill",
+        helpText: runHelpText,
+        isEnabled: isEnabled,
+        action: runAction
+      )
+    }
+  }
+
+  @ViewBuilder
+  private func button(
+    title: String,
+    systemImage: String,
+    helpText: String,
+    isEnabled: Bool,
+    action: @escaping () -> Void
+  ) -> some View {
+    Button(title, systemImage: systemImage) {
+      action()
+    }
+    .font(.caption)
+    .monospaced()
+    .labelStyle(.titleAndIcon)
+    .padding(.horizontal, 10)
+    .padding(.vertical, 6)
+    .background(.quaternary.opacity(0.2), in: Capsule())
+    .buttonStyle(.plain)
+    .help(helpText)
+    .disabled(!isEnabled)
   }
 }

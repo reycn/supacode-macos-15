@@ -21,7 +21,6 @@ struct TerminalTabLabelView: View {
       }
       Text(tab.title)
         .font(.caption)
-        .monospaced()
         .lineLimit(1)
         .foregroundStyle(isActive ? TerminalTabBarColors.activeText : TerminalTabBarColors.inactiveText)
       Spacer(minLength: TerminalTabBarMetrics.contentTrailingSpacing)

@@ -66,8 +66,8 @@ struct GhosttySurfaceSearchOverlay: View {
       }
       .padding(8)
       .background(.background)
-      .clipShape(.rect(cornerRadius: 8))
-    .shadow(radius: 4)
+      .clipShape(GhosttySearchOverlayShape())
+      .shadow(radius: 4)
     .onAppear {
       focusSearchField()
       scheduleSearch(searchText)
@@ -229,6 +229,15 @@ private enum GhosttySearchCorner {
   }
 }
 
+private struct GhosttySearchOverlayShape: Shape {
+  func path(in rect: CGRect) -> Path {
+    if #available(macOS 26.0, *) {
+      return ConcentricRectangle(corners: .concentric(minimum: 8), isUniform: true).path(in: rect)
+    }
+    return RoundedRectangle(cornerRadius: 8).path(in: rect)
+  }
+}
+
 private enum GhosttySearchDirection {
   case next
   case previous
@@ -314,7 +323,20 @@ private struct GhosttySearchButtonStyle: ButtonStyle {
           .fill(backgroundColor(isPressed: configuration.isPressed))
       )
       .onHover { hovering in
-        isHovered = hovering
+        if hovering != isHovered {
+          isHovered = hovering
+          if hovering {
+            NSCursor.pointingHand.push()
+          } else {
+            NSCursor.pop()
+          }
+        }
+      }
+      .onDisappear {
+        if isHovered {
+          isHovered = false
+          NSCursor.pop()
+        }
       }
   }
 

@@ -200,12 +200,13 @@ struct WorktreeDetailView: View {
     }
     ToolbarItem(placement: .principal) {
       if let model = PullRequestStatusModel(snapshot: toolbarState.worktreeInfoSnapshot) {
-        PullRequestStatusButton(model: model)
+        PullRequestStatusButton(model: model).padding(.horizontal)
       } else {
-        XcodeStyleStatusView()
+          XcodeStyleStatusView().padding(.horizontal)
       }
     }
-    ToolbarItem(placement: .primaryAction) {
+    
+      ToolbarItem(placement: .status) {
       RunScriptToolbarButton(
         isRunning: toolbarState.runScriptIsRunning,
         isEnabled: toolbarState.runScriptEnabled,
@@ -217,14 +218,13 @@ struct WorktreeDetailView: View {
         stopAction: { store.send(.stopRunScript) }
       )
     }
-    #if DEBUG
+      
     ToolbarItem(placement: .automatic) {
       openMenu(
         openActionSelection: toolbarState.openActionSelection,
         showExtras: toolbarState.showExtras
       )
     }
-    #endif
   }
 
   @ViewBuilder
@@ -347,4 +347,131 @@ private struct RunScriptToolbarButton: View {
     let isEnabled: Bool
     let action: () -> Void
   }
+}
+
+private struct WorktreeToolbarPreview: View {
+  let branchName: String
+  let prModel: PullRequestStatusModel?
+  let openActionSelection: OpenWorktreeAction
+  let showExtras: Bool
+  let runScriptEnabled: Bool
+  let runScriptIsRunning: Bool
+
+  var body: some View {
+    NavigationStack {
+      Color.clear
+        .frame(width: 800, height: 400)
+        .navigationTitle("")
+        .toolbar {
+          ToolbarItem(placement: .navigation) {
+            WorktreeDetailTitleView(branchName: branchName, onSubmit: { _ in })
+          }
+          ToolbarItem(placement: .principal) {
+            if let prModel {
+              PullRequestStatusButton(model: prModel).padding(.horizontal)
+            } else {
+              XcodeStyleStatusView().padding(.horizontal)
+            }
+          }
+          ToolbarItem(placement: .status) {
+            RunScriptToolbarButton(
+              isRunning: runScriptIsRunning,
+              isEnabled: runScriptEnabled,
+              runHelpText: "Run Script (⌘R)",
+              stopHelpText: "Stop Script (⌘.)",
+              runShortcut: "⌘R",
+              stopShortcut: "⌘.",
+              runAction: {},
+              stopAction: {}
+            )
+          }
+          ToolbarItem(placement: .automatic) {
+            openMenuPreview(openActionSelection: openActionSelection, showExtras: showExtras)
+          }
+        }
+    }
+    .environment(CommandKeyObserver())
+  }
+
+  @ViewBuilder
+  private func openMenuPreview(openActionSelection: OpenWorktreeAction, showExtras: Bool) -> some View {
+    let availableActions = OpenWorktreeAction.availableCases
+    let resolvedOpenActionSelection = OpenWorktreeAction.availableSelection(openActionSelection)
+    HStack(spacing: 0) {
+      Button {} label: {
+        OpenWorktreeActionMenuLabelView(
+          action: resolvedOpenActionSelection,
+          shortcutHint: showExtras ? AppShortcuts.openFinder.display : nil
+        )
+      }
+      .buttonStyle(.borderless)
+      .padding(8)
+
+      Divider()
+        .frame(height: 16)
+
+      Menu {
+        ForEach(availableActions) { action in
+          Button {} label: {
+            OpenWorktreeActionMenuLabelView(action: action, shortcutHint: nil)
+          }
+          .buttonStyle(.plain)
+        }
+      } label: {
+        Image(systemName: "chevron.down")
+          .font(.system(size: 8))
+          .monospaced()
+          .accessibilityLabel("Open in menu")
+      }
+      .buttonStyle(.borderless)
+      .padding(8)
+      .imageScale(.small)
+      .menuIndicator(.hidden)
+      .fixedSize()
+    }
+  }
+}
+
+#Preview("Toolbar - No PR") {
+  WorktreeToolbarPreview(
+    branchName: "feature/add-dark-mode",
+    prModel: nil,
+    openActionSelection: .cursor,
+    showExtras: false,
+    runScriptEnabled: true,
+    runScriptIsRunning: false
+  )
+}
+
+#Preview("Toolbar - With PR") {
+  WorktreeToolbarPreview(
+    branchName: "fix/login-issue",
+    prModel: PullRequestStatusModel(label: "PR #42 ↗ - 3/5 checks passed", url: nil),
+    openActionSelection: .finder,
+    showExtras: false,
+    runScriptEnabled: true,
+    runScriptIsRunning: false
+  )
+}
+
+#Preview("Toolbar - Running Script") {
+  WorktreeToolbarPreview(
+    branchName: "main",
+    prModel: nil,
+    openActionSelection: .cursor,
+    showExtras: false,
+    runScriptEnabled: true,
+    runScriptIsRunning: true
+  )
+}
+
+#Preview("Toolbar - Show Extras") {
+  WorktreeToolbarPreview(
+    branchName: "feature/shortcuts",
+    prModel: nil,
+    openActionSelection: .xcode,
+    showExtras: true,
+    runScriptEnabled: false,
+    runScriptIsRunning: false
+  )
 }

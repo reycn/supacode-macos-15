@@ -21,6 +21,11 @@ struct PullRequestStatusModel: Equatable {
   let label: String
   let url: URL?
 
+  init(label: String, url: URL?) {
+    self.label = label
+    self.url = url
+  }
+
   init?(snapshot: WorktreeInfoSnapshot?) {
     guard let snapshot, let number = snapshot.pullRequestNumber else {
       return nil

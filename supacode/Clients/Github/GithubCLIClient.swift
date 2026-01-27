@@ -1,11 +1,26 @@
 import ComposableArchitecture
 import Foundation
 
+struct GithubAuthStatus: Equatable, Sendable {
+  let username: String
+  let host: String
+}
+
+private struct GithubAuthStatusResponse: Decodable, Sendable {
+  let hosts: [String: [GithubAuthAccount]]
+
+  struct GithubAuthAccount: Decodable, Sendable {
+    let active: Bool
+    let login: String
+  }
+}
+
 struct GithubCLIClient {
   var defaultBranch: @Sendable (URL) async throws -> String
   var latestRun: @Sendable (URL, String) async throws -> GithubWorkflowRun?
   var currentPullRequest: @Sendable (URL) async throws -> GithubPullRequest?
   var isAvailable: @Sendable () async -> Bool
+  var authStatus: @Sendable () async throws -> GithubAuthStatus?
 }
 
 extension GithubCLIClient: DependencyKey {
@@ -74,6 +89,20 @@ extension GithubCLIClient: DependencyKey {
         } catch {
           return false
         }
+      },
+      authStatus: {
+        let output = try await runGh(
+          shell: shell,
+          arguments: ["auth", "status", "--json", "hosts"],
+          repoRoot: nil
+        )
+        let data = Data(output.utf8)
+        let response = try JSONDecoder().decode(GithubAuthStatusResponse.self, from: data)
+        guard let (host, accounts) = response.hosts.first,
+              let activeAccount = accounts.first(where: { $0.active }) else {
+          return nil
+        }
+        return GithubAuthStatus(username: activeAccount.login, host: host)
       }
     )
   }()
@@ -82,7 +111,8 @@ extension GithubCLIClient: DependencyKey {
     defaultBranch: { _ in "main" },
     latestRun: { _, _ in nil },
     currentPullRequest: { _ in nil },
-    isAvailable: { true }
+    isAvailable: { true },
+    authStatus: { GithubAuthStatus(username: "testuser", host: "github.com") }
   )
 }
 

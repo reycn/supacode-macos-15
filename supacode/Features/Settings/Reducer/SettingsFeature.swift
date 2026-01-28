@@ -10,6 +10,8 @@ struct SettingsFeature {
     var updatesAutomaticallyDownloadUpdates: Bool
     var inAppNotificationsEnabled: Bool
     var notificationSoundEnabled: Bool
+    var selection: SettingsSection = .general
+    var repositorySettings: RepositorySettingsFeature.State?
 
     init(settings: GlobalSettings = .default) {
       appearanceMode = settings.appearanceMode
@@ -38,6 +40,8 @@ struct SettingsFeature {
     case setUpdatesAutomaticallyDownloadUpdates(Bool)
     case setInAppNotificationsEnabled(Bool)
     case setNotificationSoundEnabled(Bool)
+    case setSelection(SettingsSection)
+    case repositorySettings(RepositorySettingsFeature.Action)
     case delegate(Delegate)
   }
 
@@ -57,7 +61,11 @@ struct SettingsFeature {
         }
 
       case .settingsLoaded(let settings):
-        state = State(settings: settings)
+        state.appearanceMode = settings.appearanceMode
+        state.updatesAutomaticallyCheckForUpdates = settings.updatesAutomaticallyCheckForUpdates
+        state.updatesAutomaticallyDownloadUpdates = settings.updatesAutomaticallyDownloadUpdates
+        state.inAppNotificationsEnabled = settings.inAppNotificationsEnabled
+        state.notificationSoundEnabled = settings.notificationSoundEnabled
         return .send(.delegate(.settingsChanged(settings)))
 
       case .setAppearanceMode(let mode):
@@ -110,9 +118,25 @@ struct SettingsFeature {
           }
         )
 
+      case .setSelection(let selection):
+        state.selection = selection
+        switch selection {
+        case .repository(_, let rootURL):
+          state.repositorySettings = RepositorySettingsFeature.State(rootURL: rootURL)
+        case .general, .notifications, .updates, .github:
+          state.repositorySettings = nil
+        }
+        return .none
+
+      case .repositorySettings:
+        return .none
+
       case .delegate:
         return .none
       }
+    }
+    .ifLet(\.repositorySettings, action: \.repositorySettings) {
+      RepositorySettingsFeature()
     }
   }
 }

@@ -75,6 +75,7 @@ struct RepositoriesFeature {
     case worktreeBranchNameLoaded(worktreeID: Worktree.ID, name: String)
     case worktreeLineChangesLoaded(worktreeID: Worktree.ID, added: Int, removed: Int)
     case worktreePullRequestLoaded(worktreeID: Worktree.ID, pullRequest: GithubPullRequest?)
+    case openRepositorySettings(Repository.ID)
     case alert(PresentationAction<Alert>)
     case delegate(Delegate)
   }
@@ -92,6 +93,7 @@ struct RepositoriesFeature {
   enum Delegate: Equatable {
     case selectedWorktreeChanged(Worktree?)
     case repositoriesChanged([Repository])
+    case openRepositorySettings(Repository.ID)
   }
 
   @Dependency(\.gitClient) private var gitClient
@@ -667,6 +669,9 @@ struct RepositoriesFeature {
           state: &state
         )
         return .none
+
+      case .openRepositorySettings(let repositoryID):
+        return .send(.delegate(.openRepositorySettings(repositoryID)))
 
       case .alert(.dismiss):
         state.alert = nil

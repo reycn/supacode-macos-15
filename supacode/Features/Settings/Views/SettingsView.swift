@@ -19,10 +19,12 @@ struct SettingsView: View {
     let settingsStore = store.scope(state: \.settings, action: \.settings)
     let updatesStore = store.scope(state: \.updates, action: \.updates)
     let repositories = store.repositories.repositories
-    let selection = store.settingsSelection
-    let selectionBinding = Binding(
-      get: { store.settingsSelection },
-      set: { store.send(.settingsSelectionChanged($0)) }
+    let selection = store.settings.selection
+    let selectionBinding = Binding<SettingsSection?>(
+      get: { store.settings.selection },
+      set: { selection in
+        store.send(.settings(.setSelection(selection ?? .general)))
+      }
     )
 
     NavigationSplitView(columnVisibility: .constant(.all)) {
@@ -40,7 +42,7 @@ struct SettingsView: View {
           Section("Repositories") {
             ForEach(repositories) { repository in
               Text(repository.name)
-                .tag(SettingsSection.repository(repository.id))
+                .tag(SettingsSection.repository(repository.id, rootURL: repository.rootURL))
             }
           }
         }
@@ -75,11 +77,11 @@ struct SettingsView: View {
             .navigationTitle("GitHub")
             .navigationSubtitle("GitHub CLI integration")
         }
-      case .repository(let repositoryID):
+      case .repository(let repositoryID, let rootURL):
         if let repository = repositories.first(where: { $0.id == repositoryID }) {
           SettingsDetailView {
             IfLetStore(
-              store.scope(state: \.repositorySettings, action: \.repositorySettings)
+              settingsStore.scope(state: \.repositorySettings, action: \.repositorySettings)
             ) { repositorySettingsStore in
               RepositorySettingsView(store: repositorySettingsStore)
                 .id(repository.id)
@@ -93,13 +95,8 @@ struct SettingsView: View {
               .foregroundStyle(.secondary)
               .frame(maxWidth: .infinity, alignment: .leading)
               .navigationTitle("Repositories")
+              .navigationSubtitle(rootURL.path(percentEncoded: false))
           }
-        }
-      case .none:
-        SettingsDetailView {
-          AppearanceSettingsView(store: settingsStore)
-            .navigationTitle("General")
-            .navigationSubtitle("Appearance and preferences")
         }
       }
     }
@@ -113,10 +110,5 @@ struct SettingsView: View {
     .frame(minWidth: 750, minHeight: 500)
     .background(WindowLevelSetter(level: .floating))
     .ignoresSafeArea(.container, edges: .top)
-    .onReceive(NotificationCenter.default.publisher(for: .openRepositorySettings)) { notification in
-      if let repositoryID = notification.object as? Repository.ID {
-        store.send(.settingsSelectionChanged(.repository(repositoryID)))
-      }
-    }
   }
 }

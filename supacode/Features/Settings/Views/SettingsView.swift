@@ -42,7 +42,7 @@ struct SettingsView: View {
           Section("Repositories") {
             ForEach(repositories) { repository in
               Text(repository.name)
-                .tag(SettingsSection.repository(repository.id, rootURL: repository.rootURL))
+                .tag(SettingsSection.repository(repository.id))
             }
           }
         }
@@ -77,7 +77,7 @@ struct SettingsView: View {
             .navigationTitle("GitHub")
             .navigationSubtitle("GitHub CLI integration")
         }
-      case .repository(let repositoryID, let rootURL):
+      case .repository(let repositoryID):
         if let repository = repositories.first(where: { $0.id == repositoryID }) {
           SettingsDetailView {
             IfLetStore(
@@ -95,7 +95,6 @@ struct SettingsView: View {
               .foregroundStyle(.secondary)
               .frame(maxWidth: .infinity, alignment: .leading)
               .navigationTitle("Repositories")
-              .navigationSubtitle(rootURL.path(percentEncoded: false))
           }
         }
       }

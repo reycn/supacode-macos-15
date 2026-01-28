@@ -120,12 +120,6 @@ struct SettingsFeature {
 
       case .setSelection(let selection):
         state.selection = selection
-        switch selection {
-        case .repository(_, let rootURL):
-          state.repositorySettings = RepositorySettingsFeature.State(rootURL: rootURL)
-        case .general, .notifications, .updates, .github:
-          state.repositorySettings = nil
-        }
         return .none
 
       case .repositorySettings:

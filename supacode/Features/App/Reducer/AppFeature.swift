@@ -136,7 +136,7 @@ struct AppFeature {
         let ids = Set(repositories.flatMap { $0.worktrees.map(\.id) })
         let worktrees = repositories.flatMap(\.worktrees)
         state.runScriptStatusByWorktreeID = state.runScriptStatusByWorktreeID.filter { ids.contains($0.key) }
-        if case .repository(let repositoryID, _) = state.settings.selection,
+        if case .repository(let repositoryID) = state.settings.selection,
            !repositories.contains(where: { $0.id == repositoryID })
         {
           return .merge(
@@ -159,10 +159,10 @@ struct AppFeature {
         )
 
       case .repositories(.delegate(.openRepositorySettings(let repositoryID))):
-        guard let repository = state.repositories.repositories.first(where: { $0.id == repositoryID }) else {
+        guard state.repositories.repositories.contains(where: { $0.id == repositoryID }) else {
           return .none
         }
-        let selection = SettingsSection.repository(repositoryID, rootURL: repository.rootURL)
+        let selection = SettingsSection.repository(repositoryID)
         return .merge(
           .send(.settings(.setSelection(selection))),
           .run { _ in

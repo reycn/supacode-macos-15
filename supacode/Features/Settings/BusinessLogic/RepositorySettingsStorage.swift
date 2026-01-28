@@ -1,9 +1,15 @@
 import Foundation
 
 nonisolated struct RepositorySettingsStorage {
+  let storage: SettingsStorage
+
+  init(storage: SettingsStorage = .shared) {
+    self.storage = storage
+  }
+
   func load(for rootURL: URL) async -> RepositorySettings {
     let repositoryID = repositoryID(for: rootURL)
-    return await SettingsStorage.shared.update { fileSettings in
+    return await storage.update { fileSettings in
       if let settings = fileSettings.repositories[repositoryID] {
         return settings
       }
@@ -15,7 +21,7 @@ nonisolated struct RepositorySettingsStorage {
 
   func save(_ settings: RepositorySettings, for rootURL: URL) async {
     let repositoryID = repositoryID(for: rootURL)
-    await SettingsStorage.shared.update { fileSettings in
+    await storage.update { fileSettings in
       fileSettings.repositories[repositoryID] = settings
     }
   }

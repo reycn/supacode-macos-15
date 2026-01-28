@@ -91,7 +91,7 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     .kitty,
     .terminal,
   ]
-  static let defaultPriority: [OpenWorktreeAction] = editorPriority + [.finder] + terminalPriority
+  static let defaultPriority: [OpenWorktreeAction] = editorPriority + [.xcode, .finder] + terminalPriority
   static let menuOrder: [OpenWorktreeAction] = editorPriority + [.xcode] + [.finder] + terminalPriority
 
   static func fromSettingsID(_ settingsID: String?) -> OpenWorktreeAction {

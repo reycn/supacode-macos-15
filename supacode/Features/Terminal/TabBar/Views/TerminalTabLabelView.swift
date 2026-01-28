@@ -46,8 +46,9 @@ struct TerminalTabLabelView: View {
         }
       }
     }
-    .frame(maxHeight: .infinity)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     .padding(.horizontal, TerminalTabBarMetrics.tabHorizontalPadding)
+    .contentShape(.rect)
   }
 
   private var shortcutHint: String? {

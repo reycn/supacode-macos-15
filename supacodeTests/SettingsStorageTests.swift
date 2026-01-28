@@ -84,6 +84,32 @@ struct SettingsStorageTests {
     #expect(settings.pinnedWorktreeIDs.isEmpty)
   }
 
+  @Test func migratesRepositoryDataFromUserDefaults() throws {
+    let userDefaults = UserDefaults.standard
+    let rootsKey = "repositories.roots"
+    let pinnedKey = "repositories.worktrees.pinned"
+    defer {
+      userDefaults.removeObject(forKey: rootsKey)
+      userDefaults.removeObject(forKey: pinnedKey)
+    }
+    let roots = ["/tmp/repo-a", "/tmp/repo-b"]
+    let pinned = ["/tmp/repo-a/wt-1"]
+    userDefaults.set(try JSONEncoder().encode(roots), forKey: rootsKey)
+    userDefaults.set(try JSONEncoder().encode(pinned), forKey: pinnedKey)
+
+    let root = try makeTempDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let settingsURL = root.appending(path: "settings.json")
+    let storage = SettingsStorage(settingsURL: settingsURL)
+
+    let settings = storage.load()
+
+    #expect(settings.repositoryRoots == roots)
+    #expect(settings.pinnedWorktreeIDs == pinned)
+    #expect(userDefaults.data(forKey: rootsKey) == nil)
+    #expect(userDefaults.data(forKey: pinnedKey) == nil)
+  }
+
   private func makeTempDirectory() throws -> URL {
     let url = FileManager.default.temporaryDirectory
       .appending(path: UUID().uuidString, directoryHint: .isDirectory)

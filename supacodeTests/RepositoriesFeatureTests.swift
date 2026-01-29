@@ -190,9 +190,8 @@ struct RepositoriesFeatureTests {
       $0.worktreeInfoByID = [:]
       $0.repositories = [updatedRepository]
     }
-    await store.receive(.reloadRepositories(animated: true))
     await store.receive(.delegate(.repositoriesChanged([updatedRepository])))
-    await store.receive(.delegate(.selectedWorktreeChanged(mainWorktree)))
+    await store.receive(.reloadRepositories(animated: true))
     await store.receive(
       .repositoriesLoaded(
         [updatedRepository],

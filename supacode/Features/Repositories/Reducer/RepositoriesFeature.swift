@@ -523,6 +523,7 @@ struct RepositoriesFeature {
         let selectionWasRemoved,
         let nextSelection
       ):
+        let previousSelection = state.selectedWorktreeID
         let wasPinned = state.pinnedWorktreeIDs.contains(worktreeID)
         state.deletingWorktreeIDs.remove(worktreeID)
         state.pendingWorktrees.removeAll { $0.id == worktreeID }
@@ -538,21 +539,27 @@ struct RepositoriesFeature {
         let roots = state.repositories.map(\.rootURL)
         let repositories = state.repositories
         let selectedWorktree = state.worktree(for: state.selectedWorktreeID)
-        var effects: [Effect<Action>] = [
-          roots.isEmpty ? .none : .send(.reloadRepositories(animated: true)),
+        let selectionChanged = previousSelection != state.selectedWorktreeID
+        var immediateEffects: [Effect<Action>] = [
           .send(.delegate(.repositoriesChanged(repositories))),
-          .send(.delegate(.selectedWorktreeChanged(selectedWorktree))),
+        ]
+        if selectionChanged {
+          immediateEffects.append(.send(.delegate(.selectedWorktreeChanged(selectedWorktree))))
+        }
+        var followupEffects: [Effect<Action>] = [
+          roots.isEmpty ? .none : .send(.reloadRepositories(animated: true)),
         ]
         if wasPinned {
           let pinnedWorktreeIDs = state.pinnedWorktreeIDs
-          effects.append(
+          followupEffects.append(
             .run { _ in
               await repositoryPersistence.savePinnedWorktreeIDs(pinnedWorktreeIDs)
             }
           )
         }
-        return .merge(
-          effects
+        return .concatenate(
+          .merge(immediateEffects),
+          .merge(followupEffects)
         )
 
       case .worktreeRemovalFailed(let message, let worktreeID):

@@ -42,6 +42,7 @@ struct PullRequestBadgeView: View {
       .foregroundStyle(color)
       .padding(.horizontal, 6)
       .padding(.vertical, 2)
+      .fixedSize(horizontal: true, vertical: false)
       .overlay {
         RoundedRectangle(cornerRadius: 4)
           .stroke(color, lineWidth: 1)

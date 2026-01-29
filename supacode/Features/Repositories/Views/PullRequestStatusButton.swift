@@ -16,10 +16,13 @@ struct PullRequestStatusButton: View {
           text: model.badgeText,
           color: model.badgeColor
         )
+        .layoutPriority(1)
         if let detailText = model.detailText {
           Text(commandKeyObserver.isPressed ? "Open on GitHub \(AppShortcuts.openPullRequest.display)" : detailText)
+            .lineLimit(1)
         } else if commandKeyObserver.isPressed {
           Text("Open on GitHub \(AppShortcuts.openPullRequest.display)")
+            .lineLimit(1)
         }
       }
     }

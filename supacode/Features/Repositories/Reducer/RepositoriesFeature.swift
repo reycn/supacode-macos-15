@@ -522,10 +522,11 @@ struct RepositoriesFeature {
       case .worktreeRemoved(
         let worktreeID,
         let repositoryID,
-        let selectionWasRemoved,
+        _,
         let nextSelection
       ):
         let previousSelection = state.selectedWorktreeID
+        let previousSelectedWorktree = state.worktree(for: previousSelection)
         let wasPinned = state.pinnedWorktreeIDs.contains(worktreeID)
         state.deletingWorktreeIDs.remove(worktreeID)
         state.pendingWorktrees.removeAll { $0.id == worktreeID }
@@ -534,14 +535,15 @@ struct RepositoriesFeature {
         state.worktreeInfoByID.removeValue(forKey: worktreeID)
         state.pinnedWorktreeIDs.removeAll { $0 == worktreeID }
         _ = removeWorktree(worktreeID, repositoryID: repositoryID, state: &state)
-        if selectionWasRemoved {
+        let selectionNeedsUpdate = state.selectedWorktreeID == worktreeID
+        if selectionNeedsUpdate {
           state.selectedWorktreeID =
             nextSelection ?? firstAvailableWorktreeID(in: repositoryID, state: state)
         }
         let roots = state.repositories.map(\.rootURL)
         let repositories = state.repositories
         let selectedWorktree = state.worktree(for: state.selectedWorktreeID)
-        let selectionChanged = previousSelection != state.selectedWorktreeID
+        let selectionChanged = previousSelectedWorktree != selectedWorktree
         var immediateEffects: [Effect<Action>] = [
           .send(.delegate(.repositoriesChanged(repositories))),
         ]

@@ -109,9 +109,11 @@ struct WorktreeRow: View {
       } label: {
         HStack(spacing: 6) {
           if let checkBreakdown {
+            PullRequestBadgeView(text: text, color: color)
             PullRequestChecksRingView(breakdown: checkBreakdown)
+          } else {
+            PullRequestBadgeView(text: text, color: color)
           }
-          PullRequestBadgeView(text: text, color: color)
         }
       }
       .buttonStyle(.plain)
@@ -119,9 +121,11 @@ struct WorktreeRow: View {
     } else {
       HStack(spacing: 6) {
         if let checkBreakdown {
+          PullRequestBadgeView(text: text, color: color)
           PullRequestChecksRingView(breakdown: checkBreakdown)
+        } else {
+          PullRequestBadgeView(text: text, color: color)
         }
-        PullRequestBadgeView(text: text, color: color)
       }
       .help(help)
     }

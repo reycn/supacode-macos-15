@@ -545,13 +545,13 @@ struct RepositoriesFeature {
         let selectedWorktree = state.worktree(for: state.selectedWorktreeID)
         let selectionChanged = previousSelectedWorktree != selectedWorktree
         var immediateEffects: [Effect<Action>] = [
-          .send(.delegate(.repositoriesChanged(repositories))),
+          .send(.delegate(.repositoriesChanged(repositories)))
         ]
         if selectionChanged {
           immediateEffects.append(.send(.delegate(.selectedWorktreeChanged(selectedWorktree))))
         }
         var followupEffects: [Effect<Action>] = [
-          roots.isEmpty ? .none : .send(.reloadRepositories(animated: true)),
+          roots.isEmpty ? .none : .send(.reloadRepositories(animated: true))
         ]
         if wasPinned {
           let pinnedWorktreeIDs = state.pinnedWorktreeIDs

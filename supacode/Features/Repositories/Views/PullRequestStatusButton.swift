@@ -2,36 +2,29 @@ import SwiftUI
 
 struct PullRequestStatusButton: View {
   let model: PullRequestStatusModel
-  @Environment(\.openURL) private var openURL
+  @Environment(CommandKeyObserver.self) private var commandKeyObserver
 
   var body: some View {
-    Button {
-      if let url = model.url {
-        openURL(url)
-      }
-    } label: {
+    PullRequestChecksPopoverButton(
+      checks: model.statusChecks,
+      pullRequestURL: model.url
+    ) {
+      let breakdown = PullRequestCheckBreakdown(checks: model.statusChecks)
       HStack(spacing: 6) {
-        if let checkBreakdown = model.checkBreakdown {
-          PullRequestBadgeView(
-            text: model.badgeText,
-            color: model.badgeColor
-          )
-          PullRequestChecksRingView(breakdown: checkBreakdown)
-        } else {
-          PullRequestBadgeView(
-            text: model.badgeText,
-            color: model.badgeColor
-          )
-        }
+        PullRequestChecksRingView(breakdown: breakdown)
+        PullRequestBadgeView(
+          text: model.badgeText,
+          color: model.badgeColor
+        )
         if let detailText = model.detailText {
-          Text(detailText)
+          Text(commandKeyObserver.isPressed ? "Open on GitHub \(AppShortcuts.openPullRequest.display)" : detailText)
+        } else if commandKeyObserver.isPressed {
+          Text("Open on GitHub \(AppShortcuts.openPullRequest.display)")
         }
       }
-      .font(.caption)
-      .monospaced()
     }
-    .buttonStyle(.plain)
-    .help(model.helpText)
+    .font(.caption)
+    .monospaced()
   }
 
 }
@@ -40,7 +33,7 @@ struct PullRequestStatusModel: Equatable {
   let number: Int
   let state: String?
   let url: URL?
-  let checkBreakdown: PullRequestCheckBreakdown?
+  let statusChecks: [GithubPullRequestStatusCheck]
   let detailText: String?
 
   init?(snapshot: WorktreeInfoSnapshot?) {
@@ -57,37 +50,20 @@ struct PullRequestStatusModel: Equatable {
     self.url = snapshot.pullRequestURL.flatMap(URL.init(string:))
     if state == "MERGED" {
       self.detailText = "Merged"
-      self.checkBreakdown = nil
+      self.statusChecks = []
       return
     }
     let isDraft = snapshot.pullRequestIsDraft
-    let prefix = "\(isDraft ? "(Drafted) " : "")↗ - "
+    let prefix = "\(isDraft ? "(Drafted) " : "")"
     let checks = snapshot.pullRequestStatusChecks
+    self.statusChecks = checks
     if checks.isEmpty {
       self.detailText = prefix + "Checks unavailable"
-      self.checkBreakdown = nil
       return
     }
     let breakdown = PullRequestCheckBreakdown(checks: checks)
     let checksLabel = breakdown.total == 1 ? "check" : "checks"
-    var parts: [String] = []
-    if breakdown.failed > 0 {
-      parts.append("\(breakdown.failed) failed")
-    }
-    if breakdown.inProgress > 0 {
-      parts.append("\(breakdown.inProgress) in progress")
-    }
-    if breakdown.skipped > 0 {
-      parts.append("\(breakdown.skipped) skipped")
-    }
-    if breakdown.expected > 0 {
-      parts.append("\(breakdown.expected) expected")
-    }
-    if breakdown.total > 0 {
-      parts.append("\(breakdown.passed) successful")
-    }
-    self.detailText = prefix + parts.joined(separator: ", ") + " \(checksLabel)"
-    self.checkBreakdown = breakdown
+    self.detailText = prefix + breakdown.summaryText + " \(checksLabel)"
   }
 
   var badgeText: String {
@@ -96,10 +72,6 @@ struct PullRequestStatusModel: Equatable {
 
   var badgeColor: Color {
     PullRequestBadgeStyle.style(state: state, number: number)?.color ?? .secondary
-  }
-
-  var helpText: String {
-    "Open pull request on GitHub"
   }
 
   static func shouldDisplay(state: String?, number: Int?) -> Bool {

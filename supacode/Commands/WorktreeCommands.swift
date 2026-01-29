@@ -1,21 +1,24 @@
+import AppKit
 import ComposableArchitecture
 import SwiftUI
 
 struct WorktreeCommands: Commands {
-  let store: StoreOf<RepositoriesFeature>
-  @ObservedObject private var viewStore: ViewStore<RepositoriesFeature.State, RepositoriesFeature.Action>
+  let store: StoreOf<AppFeature>
+  @ObservedObject private var viewStore: ViewStore<AppFeature.State, AppFeature.Action>
   @FocusedValue(\.openSelectedWorktreeAction) private var openSelectedWorktreeAction
   @FocusedValue(\.removeWorktreeAction) private var removeWorktreeAction
   @FocusedValue(\.runScriptAction) private var runScriptAction
   @FocusedValue(\.stopRunScriptAction) private var stopRunScriptAction
 
-  init(store: StoreOf<RepositoriesFeature>) {
+  init(store: StoreOf<AppFeature>) {
     self.store = store
     viewStore = ViewStore(store, observe: { $0 })
   }
 
   var body: some Commands {
-    let orderedRows = viewStore.state.orderedWorktreeRows()
+    let repositories = viewStore.state.repositories
+    let orderedRows = repositories.orderedWorktreeRows()
+    let pullRequestURL = selectedPullRequestURL
     CommandMenu("Worktrees") {
       ForEach(worktreeShortcuts.indices, id: \.self) { index in
         let shortcut = worktreeShortcuts[index]
@@ -24,7 +27,7 @@ struct WorktreeCommands: Commands {
     }
     CommandGroup(replacing: .newItem) {
       Button("Open Repository...", systemImage: "folder") {
-        store.send(.setOpenPanelPresented(true))
+        store.send(.repositories(.setOpenPanelPresented(true)))
       }
       .keyboardShortcut(
         AppShortcuts.openRepository.keyEquivalent,
@@ -40,14 +43,25 @@ struct WorktreeCommands: Commands {
       )
       .help("Open Worktree (\(AppShortcuts.openFinder.display))")
       .disabled(openSelectedWorktreeAction == nil)
+      Button("Open Pull Request on GitHub") {
+        if let pullRequestURL {
+          NSWorkspace.shared.open(pullRequestURL)
+        }
+      }
+      .keyboardShortcut(
+        AppShortcuts.openPullRequest.keyEquivalent,
+        modifiers: AppShortcuts.openPullRequest.modifiers
+      )
+      .help("Open Pull Request on GitHub (\(AppShortcuts.openPullRequest.display))")
+      .disabled(pullRequestURL == nil)
       Button("New Worktree", systemImage: "plus") {
-        store.send(.createRandomWorktree)
+        store.send(.repositories(.createRandomWorktree))
       }
       .keyboardShortcut(
         AppShortcuts.newWorktree.keyEquivalent, modifiers: AppShortcuts.newWorktree.modifiers
       )
       .help("New Worktree (\(AppShortcuts.newWorktree.display))")
-      .disabled(!viewStore.canCreateWorktree)
+      .disabled(!repositories.canCreateWorktree)
       Button("Remove Worktree") {
         removeWorktreeAction?()
       }
@@ -55,7 +69,7 @@ struct WorktreeCommands: Commands {
       .help("Remove Worktree (⌘⌫)")
       .disabled(removeWorktreeAction == nil)
       Button("Refresh Worktrees") {
-        store.send(.refreshWorktrees)
+        store.send(.repositories(.refreshWorktrees))
       }
       .keyboardShortcut(
         AppShortcuts.refreshWorktrees.keyEquivalent,
@@ -88,6 +102,11 @@ struct WorktreeCommands: Commands {
     AppShortcuts.worktreeSelection
   }
 
+  private var selectedPullRequestURL: URL? {
+    let pullRequestURL = viewStore.state.worktreeInfo.snapshot?.pullRequestURL
+    return pullRequestURL.flatMap(URL.init(string:))
+  }
+
   private func worktreeShortcutButton(
     index: Int,
     shortcut: AppShortcut,
@@ -97,7 +116,7 @@ struct WorktreeCommands: Commands {
     let title = worktreeShortcutTitle(index: index, row: row)
     return Button(title) {
       guard let row else { return }
-      store.send(.selectWorktree(row.id))
+      store.send(.repositories(.selectWorktree(row.id)))
     }
     .keyboardShortcut(shortcut.keyEquivalent, modifiers: shortcut.modifiers)
     .help("Switch to \(title) (\(shortcut.display))")
@@ -106,7 +125,7 @@ struct WorktreeCommands: Commands {
 
   private func worktreeShortcutTitle(index: Int, row: WorktreeRowModel?) -> String {
     guard let row else { return "Worktree \(index + 1)" }
-    let repositoryName = viewStore.state.repositoryName(for: row.repositoryID) ?? "Repository"
+    let repositoryName = viewStore.state.repositories.repositoryName(for: row.repositoryID) ?? "Repository"
     return "\(repositoryName) — \(row.name)"
   }
 }

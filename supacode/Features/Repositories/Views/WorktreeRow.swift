@@ -27,7 +27,7 @@ struct WorktreeRow: View {
     let hasInfo = displayAddedLines != nil || displayRemovedLines != nil
     let pullRequestState = displayPullRequest?.state.uppercased()
     let pullRequestNumber = displayPullRequest?.number
-    let pullRequestURL = displayPullRequest?.url.flatMap(URL.init(string:))
+    let pullRequestURL = displayPullRequest.flatMap { URL(string: $0.url) }
     let isMerged = pullRequestState == "MERGED"
     let isOpen = pullRequestState == "OPEN"
     let mergedHelp = pullRequestURL == nil ? "Pull request merged" : "Open merged pull request on GitHub"

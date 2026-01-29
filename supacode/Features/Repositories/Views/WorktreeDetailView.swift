@@ -5,6 +5,7 @@ struct WorktreeDetailView: View {
   @Bindable var store: StoreOf<AppFeature>
   let terminalManager: WorktreeTerminalManager
   @Environment(CommandKeyObserver.self) private var commandKeyObserver
+  @Environment(\.openURL) private var openURL
 
   var body: some View {
     detailBody(state: store.state)
@@ -17,6 +18,7 @@ struct WorktreeDetailView: View {
     let loadingInfo = loadingInfo(for: selectedRow, repositories: repositories)
     let hasActiveWorktree = selectedWorktree != nil && loadingInfo == nil
     let worktreeInfoSnapshot = state.worktreeInfo.snapshot
+    let pullRequestURL = worktreeInfoSnapshot?.pullRequestURL.flatMap(URL.init(string:))
     let openActionSelection = state.openActionSelection
     let runScriptEnabled =
       hasActiveWorktree
@@ -70,7 +72,8 @@ struct WorktreeDetailView: View {
     let actions = makeFocusedActions(
       hasActiveWorktree: hasActiveWorktree,
       runScriptEnabled: runScriptEnabled,
-      runScriptIsRunning: runScriptIsRunning
+      runScriptIsRunning: runScriptIsRunning,
+      pullRequestURL: pullRequestURL
     )
     return applyFocusedActions(content: content, actions: actions)
   }
@@ -91,16 +94,24 @@ struct WorktreeDetailView: View {
       .focusedSceneValue(\.endSearchAction, actions.endSearch)
       .focusedSceneValue(\.runScriptAction, actions.runScript)
       .focusedSceneValue(\.stopRunScriptAction, actions.stopRunScript)
+      .focusedSceneValue(\.openPullRequestAction, actions.openPullRequest)
   }
 
   private func makeFocusedActions(
     hasActiveWorktree: Bool,
     runScriptEnabled: Bool,
-    runScriptIsRunning: Bool
+    runScriptIsRunning: Bool,
+    pullRequestURL: URL?
   ) -> FocusedActions {
     func action(_ appAction: AppFeature.Action) -> (() -> Void)? {
       hasActiveWorktree ? { store.send(appAction) } : nil
     }
+    let openPullRequest: (() -> Void)? =
+      if let pullRequestURL {
+        { openURL(pullRequestURL) }
+      } else {
+        nil
+      }
     return FocusedActions(
       openSelectedWorktree: action(.openSelectedWorktree),
       newTerminal: action(.newTerminal),
@@ -112,7 +123,8 @@ struct WorktreeDetailView: View {
       navigateSearchPrevious: action(.navigateSearchPrevious),
       endSearch: action(.endSearch),
       runScript: runScriptEnabled ? { store.send(.runScript) } : nil,
-      stopRunScript: runScriptIsRunning ? { store.send(.stopRunScript) } : nil
+      stopRunScript: runScriptIsRunning ? { store.send(.stopRunScript) } : nil,
+      openPullRequest: openPullRequest
     )
   }
 
@@ -128,6 +140,7 @@ struct WorktreeDetailView: View {
     let endSearch: (() -> Void)?
     let runScript: (() -> Void)?
     let stopRunScript: (() -> Void)?
+    let openPullRequest: (() -> Void)?
   }
 
   private struct WorktreeToolbarState {

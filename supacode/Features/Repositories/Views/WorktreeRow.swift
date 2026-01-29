@@ -10,7 +10,6 @@ struct WorktreeRow: View {
   let isRunScriptRunning: Bool
   let showsNotificationIndicator: Bool
   let shortcutHint: String?
-  @Environment(CommandKeyObserver.self) private var commandKeyObserver
 
   var body: some View {
     let showsSpinner = isLoading || taskStatus == .running
@@ -83,24 +82,14 @@ struct WorktreeRow: View {
           pullRequestURL: pullRequestURL
         ) {
           let breakdown = PullRequestCheckBreakdown(checks: pullRequestChecks)
-          let detailText = pullRequestCheckDetailText(checks: pullRequestChecks)
           HStack(spacing: 6) {
             if breakdown.total > 0 {
               PullRequestChecksRingView(breakdown: breakdown)
             }
             PullRequestBadgeView(text: pullRequestBadgeStyle.text, color: pullRequestBadgeStyle.color)
-            if let detailText {
-              Text(commandKeyObserver.isPressed ? "Open on GitHub \(AppShortcuts.openPullRequest.display)" : detailText)
-            } else if commandKeyObserver.isPressed {
-              Text("Open on GitHub \(AppShortcuts.openPullRequest.display)")
-            }
           }
         }
-        .help(
-          commandKeyObserver.isPressed
-            ? "Open pull request on GitHub (\(AppShortcuts.openPullRequest.display))"
-            : "Show pull request checks"
-        )
+        .help("Show pull request checks")
       }
       if let shortcutHint {
         ShortcutHintView(text: shortcutHint, color: .secondary)
@@ -108,15 +97,6 @@ struct WorktreeRow: View {
     }
   }
 
-}
-
-private func pullRequestCheckDetailText(checks: [GithubPullRequestStatusCheck]) -> String? {
-  if checks.isEmpty {
-    return nil
-  }
-  let breakdown = PullRequestCheckBreakdown(checks: checks)
-  let checksLabel = breakdown.total == 1 ? "check" : "checks"
-  return "↗ - \(breakdown.summaryText) \(checksLabel)"
 }
 
 private struct WorktreeRowInfoView: View {

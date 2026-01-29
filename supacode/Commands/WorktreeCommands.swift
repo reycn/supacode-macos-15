@@ -5,6 +5,7 @@ struct WorktreeCommands: Commands {
   let store: StoreOf<RepositoriesFeature>
   @ObservedObject private var viewStore: ViewStore<RepositoriesFeature.State, RepositoriesFeature.Action>
   @FocusedValue(\.openSelectedWorktreeAction) private var openSelectedWorktreeAction
+  @FocusedValue(\.openPullRequestAction) private var openPullRequestAction
   @FocusedValue(\.removeWorktreeAction) private var removeWorktreeAction
   @FocusedValue(\.runScriptAction) private var runScriptAction
   @FocusedValue(\.stopRunScriptAction) private var stopRunScriptAction
@@ -40,6 +41,15 @@ struct WorktreeCommands: Commands {
       )
       .help("Open Worktree (\(AppShortcuts.openFinder.display))")
       .disabled(openSelectedWorktreeAction == nil)
+      Button("Open Pull Request on GitHub") {
+        openPullRequestAction?()
+      }
+      .keyboardShortcut(
+        AppShortcuts.openPullRequest.keyEquivalent,
+        modifiers: AppShortcuts.openPullRequest.modifiers
+      )
+      .help("Open Pull Request on GitHub (\(AppShortcuts.openPullRequest.display))")
+      .disabled(openPullRequestAction == nil)
       Button("New Worktree", systemImage: "plus") {
         store.send(.createRandomWorktree)
       }
@@ -119,10 +129,19 @@ private struct OpenSelectedWorktreeActionKey: FocusedValueKey {
   typealias Value = () -> Void
 }
 
+private struct OpenPullRequestActionKey: FocusedValueKey {
+  typealias Value = () -> Void
+}
+
 extension FocusedValues {
   var openSelectedWorktreeAction: (() -> Void)? {
     get { self[OpenSelectedWorktreeActionKey.self] }
     set { self[OpenSelectedWorktreeActionKey.self] = newValue }
+  }
+
+  var openPullRequestAction: (() -> Void)? {
+    get { self[OpenPullRequestActionKey.self] }
+    set { self[OpenPullRequestActionKey.self] = newValue }
   }
 
   var removeWorktreeAction: (() -> Void)? {

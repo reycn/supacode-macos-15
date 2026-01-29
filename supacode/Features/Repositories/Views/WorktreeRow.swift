@@ -29,12 +29,11 @@ struct WorktreeRow: View {
     let pullRequestState = displayPullRequest?.state.uppercased()
     let pullRequestNumber = displayPullRequest?.number
     let pullRequestURL = displayPullRequest.flatMap { URL(string: $0.url) }
-    let isMerged = pullRequestState == "MERGED"
-    let isOpen = pullRequestState == "OPEN"
-    let mergedHelp = pullRequestURL == nil ? "Pull request merged" : "Open merged pull request on GitHub"
-    let openHelp = pullRequestURL == nil ? "Pull request open" : "Open pull request on GitHub"
-    let mergedColor = Color(red: 137.0 / 255.0, green: 87.0 / 255.0, blue: 229.0 / 255.0)
-    let openColor = Color(red: 35.0 / 255.0, green: 134.0 / 255.0, blue: 54.0 / 255.0)
+    let pullRequestBadgeStyle = PullRequestBadgeStyle.style(
+      state: pullRequestState,
+      number: pullRequestNumber
+    )
+    let pullRequestHelp = PullRequestBadgeStyle.helpText(state: pullRequestState, url: pullRequestURL)
     HStack(alignment: .center) {
       ZStack {
         if showsNotificationIndicator {
@@ -78,18 +77,13 @@ struct WorktreeRow: View {
           .help("Run script active")
           .accessibilityLabel("Run script active")
       }
-      if isMerged {
-        if let pullRequestNumber {
-          pullRequestBadge(text: "#\(pullRequestNumber)", color: mergedColor, help: mergedHelp, url: pullRequestURL)
-        } else {
-          pullRequestBadge(text: "MERGED", color: mergedColor, help: mergedHelp, url: pullRequestURL)
-        }
-      } else if isOpen {
-        if let pullRequestNumber {
-          pullRequestBadge(text: "#\(pullRequestNumber)", color: openColor, help: openHelp, url: pullRequestURL)
-        } else {
-          pullRequestBadge(text: "OPEN", color: openColor, help: openHelp, url: pullRequestURL)
-        }
+      if let pullRequestBadgeStyle {
+        pullRequestBadge(
+          text: pullRequestBadgeStyle.text,
+          color: pullRequestBadgeStyle.color,
+          help: pullRequestHelp,
+          url: pullRequestURL
+        )
       }
       if let shortcutHint {
         ShortcutHintView(text: shortcutHint, color: .secondary)
@@ -103,33 +97,14 @@ struct WorktreeRow: View {
       Button {
         openURL(url)
       } label: {
-        WorktreePullRequestBadge(text: text, color: color, help: help)
+        PullRequestBadgeView(text: text, color: color)
       }
       .buttonStyle(.plain)
-    } else {
-      WorktreePullRequestBadge(text: text, color: color, help: help)
-    }
-  }
-}
-
-private struct WorktreePullRequestBadge: View {
-  let text: String
-  let color: Color
-  let help: String
-
-  var body: some View {
-    Text(text)
-      .font(.caption2)
-      .monospaced()
-      .foregroundStyle(color)
-      .padding(.horizontal, 6)
-      .padding(.vertical, 2)
-      .overlay {
-        RoundedRectangle(cornerRadius: 4)
-          .stroke(color, lineWidth: 1)
-      }
       .help(help)
-      .accessibilityLabel(text)
+    } else {
+      PullRequestBadgeView(text: text, color: color)
+        .help(help)
+    }
   }
 }
 

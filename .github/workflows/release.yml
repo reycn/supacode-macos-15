@@ -95,9 +95,18 @@ jobs:
               lines.append(f"**{title}**")
               lines.extend([f"- {item}" for item in items])
 
-          add_section("✨ New Features", data.get("new_features", []))
-          add_section("🐛 Bug Fixes", data.get("bug_fixes", []))
-          add_section("🌱 Improvements", data.get("improvements", []))
+          new_features = data.get("new_features", [])
+          bug_fixes = data.get("bug_fixes", [])
+          improvements = data.get("improvements", [])
+
+          add_section("✨ New Features", new_features)
+          add_section("🐛 Bug Fixes", bug_fixes)
+          add_section("🌱 Improvements", improvements)
+
+          if not (new_features or bug_fixes or improvements):
+            lines.append("")
+            lines.append("**ℹ️ Notes**")
+            lines.append("- No user-facing changes in this release.")
 
           Path("build/release-notes.md").write_text("\n".join(lines).strip() + "\n")
           PY

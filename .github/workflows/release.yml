@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      RELEASE_REPO_SH: supabitapp/supacode-sh
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,9 +36,17 @@ jobs:
       - name: Prepare release context
         run: |
           set -euo pipefail
-          PREV_TAG=$(git describe --tags --abbrev=0 --match "v*" "$TAG^" 2>/dev/null || true)
+          RELEASE_TAGS=$(gh release list -R "$RELEASE_REPO_SH" --limit 100 | awk '{print $1}')
+          PREV_TAG=$(printf '%s\n' "$RELEASE_TAGS" | awk -v tag="$TAG" '$1!=tag {print $1; exit}')
+          if [ -z "$PREV_TAG" ]; then
+            PREV_TAG=$(git describe --tags --abbrev=0 --match "v*" "$TAG^" 2>/dev/null || true)
+          fi
           if [ -n "$PREV_TAG" ]; then
-            RANGE="$PREV_TAG..$TAG"
+            if git rev-parse "$PREV_TAG" >/dev/null 2>&1; then
+              RANGE="$PREV_TAG..$TAG"
+            else
+              RANGE="$(git rev-list --max-parents=0 "$TAG")..$TAG"
+            fi
           else
             RANGE="$(git rev-list --max-parents=0 "$TAG")..$TAG"
           fi

@@ -10,14 +10,10 @@ final class GhosttyRuntime {
   var onConfigChange: (() -> Void)?
 
   init() {
-    guard let config = ghostty_config_new() else {
+    guard let config = Self.loadConfig() else {
       preconditionFailure("ghostty_config_new failed")
     }
     self.config = config
-    ghostty_config_load_default_files(config)
-    ghostty_config_load_recursive_files(config)
-    ghostty_config_load_cli_args(config)
-    ghostty_config_finalize(config)
 
     var runtimeConfig = ghostty_runtime_config_s(
       userdata: Unmanaged.passUnretained(self).toOpaque(),
@@ -113,6 +109,33 @@ final class GhosttyRuntime {
     ghostty_app_set_color_scheme(app, ghosttyScheme)
   }
 
+  func reloadConfig(soft: Bool, target: ghostty_target_s) {
+    guard let app else { return }
+    if soft, let config {
+      applyConfig(config, target: target, app: app)
+      return
+    }
+    guard let config = Self.loadConfig() else { return }
+    applyConfig(config, target: target, app: app)
+    ghostty_config_free(config)
+  }
+
+  private func applyConfig(
+    _ config: ghostty_config_t,
+    target: ghostty_target_s,
+    app: ghostty_app_t
+  ) {
+    switch target.tag {
+    case GHOSTTY_TARGET_APP:
+      ghostty_app_update_config(app, config)
+    case GHOSTTY_TARGET_SURFACE:
+      guard let surface = target.target.surface else { return }
+      ghostty_surface_update_config(surface, config)
+    default:
+      return
+    }
+  }
+
   private static func runtime(from userdata: UnsafeMutableRawPointer?) -> GhosttyRuntime? {
     guard let userdata else { return nil }
     return Unmanaged<GhosttyRuntime>.fromOpaque(userdata).takeUnretainedValue()
@@ -147,14 +170,21 @@ final class GhosttyRuntime {
   private static func action(
     _ app: ghostty_app_t, target: ghostty_target_s, action: ghostty_action_s
   ) -> Bool {
-    if action.tag == GHOSTTY_ACTION_CONFIG_CHANGE,
-      let runtime = runtime(fromApp: app)
-    {
-      let config = action.action.config_change.config
-      Task { @MainActor in
-        runtime.updateConfig(config)
-        runtime.onConfigChange?()
-        NotificationCenter.default.post(name: .ghosttyRuntimeConfigDidChange, object: runtime)
+    if let runtime = runtime(fromApp: app) {
+      if action.tag == GHOSTTY_ACTION_CONFIG_CHANGE {
+        let config = action.action.config_change.config
+        guard let clone = ghostty_config_clone(config) else { return false }
+        Task { @MainActor in
+          runtime.setConfig(clone)
+          runtime.onConfigChange?()
+          NotificationCenter.default.post(name: .ghosttyRuntimeConfigDidChange, object: runtime)
+        }
+      }
+      if action.tag == GHOSTTY_ACTION_RELOAD_CONFIG {
+        let soft = action.action.reload_config.soft
+        Task { @MainActor in
+          runtime.reloadConfig(soft: soft, target: target)
+        }
       }
     }
     guard target.tag == GHOSTTY_TARGET_SURFACE else { return false }
@@ -237,13 +267,20 @@ final class GhosttyRuntime {
     bridge.closeSurface(processAlive: processAlive)
   }
 
-  func updateConfig(_ config: ghostty_config_t?) {
-    guard let config else { return }
-    guard let clone = ghostty_config_clone(config) else { return }
+  private func setConfig(_ config: ghostty_config_t) {
     if let existing = self.config {
       ghostty_config_free(existing)
     }
-    self.config = clone
+    self.config = config
+  }
+
+  private static func loadConfig() -> ghostty_config_t? {
+    guard let config = ghostty_config_new() else { return nil }
+    ghostty_config_load_default_files(config)
+    ghostty_config_load_recursive_files(config)
+    ghostty_config_load_cli_args(config)
+    ghostty_config_finalize(config)
+    return config
   }
 
   func keyboardShortcut(for action: String) -> KeyboardShortcut? {

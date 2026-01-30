@@ -3,7 +3,6 @@ import Foundation
 import GhosttyKit
 import Observation
 import Sharing
-import SwiftUI
 
 @MainActor
 @Observable
@@ -356,17 +355,6 @@ final class WorktreeTerminalState {
 
   func clearNotificationIndicator() {
     hasUnseenNotification = false
-  }
-
-  func setColorScheme(_ scheme: ColorScheme) {
-    let ghosttyScheme: ghostty_color_scheme_e = scheme == .dark
-      ? GHOSTTY_COLOR_SCHEME_DARK
-      : GHOSTTY_COLOR_SCHEME_LIGHT
-    for surfaceView in surfaces.values {
-      if let surface = surfaceView.surface {
-        ghostty_surface_set_color_scheme(surface, ghosttyScheme)
-      }
-    }
   }
 
   func needsSetupScript() -> Bool {

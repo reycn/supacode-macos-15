@@ -4,9 +4,24 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 final class GhosttyRuntime {
+  final class SurfaceReference {
+    let surface: ghostty_surface_t
+    var isValid = true
+
+    init(_ surface: ghostty_surface_t) {
+      self.surface = surface
+    }
+
+    func invalidate() {
+      isValid = false
+    }
+  }
+
   private var config: ghostty_config_t?
   private(set) var app: ghostty_app_t?
   private var observers: [NSObjectProtocol] = []
+  private var surfaceRefs: [SurfaceReference] = []
+  private var lastColorScheme: ghostty_color_scheme_e?
   var onConfigChange: (() -> Void)?
 
   init() {
@@ -106,11 +121,30 @@ final class GhosttyRuntime {
     let ghosttyScheme: ghostty_color_scheme_e = scheme == .dark
       ? GHOSTTY_COLOR_SCHEME_DARK
       : GHOSTTY_COLOR_SCHEME_LIGHT
+    print("GhosttyRuntime setColorScheme scheme=\(scheme == .dark ? "dark" : "light")")
+    lastColorScheme = ghosttyScheme
     ghostty_app_set_color_scheme(app, ghosttyScheme)
+    applyColorSchemeToSurfaces(ghosttyScheme)
+  }
+
+  func registerSurface(_ surface: ghostty_surface_t) -> SurfaceReference {
+    let ref = SurfaceReference(surface)
+    surfaceRefs.append(ref)
+    surfaceRefs = surfaceRefs.filter { $0.isValid }
+    if let lastColorScheme {
+      ghostty_surface_set_color_scheme(surface, lastColorScheme)
+    }
+    return ref
+  }
+
+  func unregisterSurface(_ ref: SurfaceReference) {
+    ref.invalidate()
+    surfaceRefs = surfaceRefs.filter { $0.isValid }
   }
 
   func reloadConfig(soft: Bool, target: ghostty_target_s) {
     guard let app else { return }
+    print("GhosttyRuntime reloadConfig soft=\(soft) target=\(target.tag.rawValue)")
     if soft, let config {
       applyConfig(config, target: target, app: app)
       return
@@ -127,12 +161,21 @@ final class GhosttyRuntime {
   ) {
     switch target.tag {
     case GHOSTTY_TARGET_APP:
+      print("GhosttyRuntime applyConfig target=app")
       ghostty_app_update_config(app, config)
     case GHOSTTY_TARGET_SURFACE:
       guard let surface = target.target.surface else { return }
+      print("GhosttyRuntime applyConfig target=surface")
       ghostty_surface_update_config(surface, config)
     default:
+      print("GhosttyRuntime applyConfig target=unknown")
       return
+    }
+  }
+
+  private func applyColorSchemeToSurfaces(_ scheme: ghostty_color_scheme_e) {
+    for ref in surfaceRefs where ref.isValid {
+      ghostty_surface_set_color_scheme(ref.surface, scheme)
     }
   }
 
@@ -174,6 +217,7 @@ final class GhosttyRuntime {
       if action.tag == GHOSTTY_ACTION_CONFIG_CHANGE {
         let config = action.action.config_change.config
         guard let clone = ghostty_config_clone(config) else { return false }
+        print("GhosttyRuntime action config_change target=\(target.tag.rawValue)")
         Task { @MainActor in
           runtime.setConfig(clone)
           runtime.onConfigChange?()
@@ -182,6 +226,7 @@ final class GhosttyRuntime {
       }
       if action.tag == GHOSTTY_ACTION_RELOAD_CONFIG {
         let soft = action.action.reload_config.soft
+        print("GhosttyRuntime action reload_config soft=\(soft) target=\(target.tag.rawValue)")
         Task { @MainActor in
           runtime.reloadConfig(soft: soft, target: target)
         }

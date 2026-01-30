@@ -14,6 +14,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
   let id = UUID()
   let bridge: GhosttySurfaceBridge
   private(set) var surface: ghostty_surface_t?
+  private var surfaceRef: GhosttyRuntime.SurfaceReference?
   private let workingDirectoryCString: UnsafeMutablePointer<CChar>?
   private let initialInputCString: UnsafeMutablePointer<CChar>?
   private var trackingArea: NSTrackingArea?
@@ -89,6 +90,9 @@ final class GhosttySurfaceView: NSView, Identifiable {
     wantsLayer = true
     bridge.surfaceView = self
     createSurface()
+    if let surface {
+      surfaceRef = runtime.registerSurface(surface)
+    }
     registerForDraggedTypes(Array(Self.dropTypes))
   }
 
@@ -108,6 +112,10 @@ final class GhosttySurfaceView: NSView, Identifiable {
 
   func closeSurface() {
     if let surface {
+      if let surfaceRef {
+        runtime.unregisterSurface(surfaceRef)
+        self.surfaceRef = nil
+      }
       ghostty_surface_free(surface)
       self.surface = nil
       bridge.surface = nil

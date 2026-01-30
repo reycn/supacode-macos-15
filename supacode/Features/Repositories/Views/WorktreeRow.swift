@@ -28,6 +28,7 @@ struct WorktreeRow: View {
     let pullRequestState = displayPullRequest?.state.uppercased()
     let pullRequestNumber = displayPullRequest?.number
     let pullRequestURL = displayPullRequest.flatMap { URL(string: $0.url) }
+    let pullRequestTitle = displayPullRequest?.title
     let pullRequestChecks = displayPullRequest?.statusCheckRollup?.checks ?? []
     let pullRequestBadgeStyle = PullRequestBadgeStyle.style(
       state: pullRequestState,
@@ -79,7 +80,8 @@ struct WorktreeRow: View {
       if let pullRequestBadgeStyle {
         PullRequestChecksPopoverButton(
           checks: pullRequestChecks,
-          pullRequestURL: pullRequestURL
+          pullRequestURL: pullRequestURL,
+          pullRequestTitle: pullRequestTitle
         ) {
           let breakdown = PullRequestCheckBreakdown(checks: pullRequestChecks)
           HStack(spacing: 6) {

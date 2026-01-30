@@ -7,7 +7,8 @@ struct PullRequestStatusButton: View {
   var body: some View {
     PullRequestChecksPopoverButton(
       checks: model.statusChecks,
-      pullRequestURL: model.url
+      pullRequestURL: model.url,
+      pullRequestTitle: model.title
     ) {
       let breakdown = PullRequestCheckBreakdown(checks: model.statusChecks)
       HStack(spacing: 6) {
@@ -36,6 +37,7 @@ struct PullRequestStatusModel: Equatable {
   let number: Int
   let state: String?
   let url: URL?
+  let title: String
   let statusChecks: [GithubPullRequestStatusCheck]
   let detailText: String?
 
@@ -50,6 +52,7 @@ struct PullRequestStatusModel: Equatable {
     let state = pullRequest.state.uppercased()
     self.state = state
     self.url = URL(string: pullRequest.url)
+    self.title = pullRequest.title
     if state == "MERGED" {
       self.detailText = "Merged"
       self.statusChecks = []

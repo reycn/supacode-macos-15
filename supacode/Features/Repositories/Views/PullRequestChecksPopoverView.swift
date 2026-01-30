@@ -3,13 +3,15 @@ import SwiftUI
 struct PullRequestChecksPopoverView: View {
   let checks: [GithubPullRequestStatusCheck]
   let pullRequestURL: URL?
+  let pullRequestTitle: String?
   private let breakdown: PullRequestCheckBreakdown
   private let sortedChecks: [GithubPullRequestStatusCheck]
   @Environment(\.openURL) private var openURL
 
-  init(checks: [GithubPullRequestStatusCheck], pullRequestURL: URL?) {
+  init(checks: [GithubPullRequestStatusCheck], pullRequestURL: URL?, pullRequestTitle: String?) {
     self.checks = checks
     self.pullRequestURL = pullRequestURL
+    self.pullRequestTitle = pullRequestTitle
     self.breakdown = PullRequestCheckBreakdown(checks: checks)
     self.sortedChecks = checks.sorted {
       let left = Self.sortRank(for: $0.checkState)
@@ -24,9 +26,18 @@ struct PullRequestChecksPopoverView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading) {
-        Text("Checks")
+        if let pullRequestURL {
+          Button {
+            openURL(pullRequestURL)
+          } label: {
+            Text("\(pullRequestTitle ?? "Open pull request on GitHub") ↗")
+              .lineLimit(1)
+          }
+          .buttonStyle(.plain)
+          .help("Open pull request on GitHub (\(AppShortcuts.openPullRequest.display))")
+          .keyboardShortcut(AppShortcuts.openPullRequest.keyboardShortcut)
           .font(.headline)
-          .monospaced()
+        }
 
         if breakdown.total > 0 {
           HStack {
@@ -34,16 +45,6 @@ struct PullRequestChecksPopoverView: View {
             Text(breakdown.summaryText)
               .foregroundStyle(.secondary)
           }
-          .font(.caption)
-        }
-
-        if let pullRequestURL {
-          Button("Open pull request on GitHub") {
-            openURL(pullRequestURL)
-          }
-          .buttonStyle(.plain)
-          .help("Open pull request on GitHub (\(AppShortcuts.openPullRequest.display))")
-          .keyboardShortcut(AppShortcuts.openPullRequest.keyboardShortcut)
           .font(.caption)
         }
 

@@ -3,6 +3,7 @@ import SwiftUI
 struct PullRequestChecksPopoverButton<Label: View>: View {
   let checks: [GithubPullRequestStatusCheck]
   let pullRequestURL: URL?
+  let pullRequestTitle: String?
   @ViewBuilder let label: () -> Label
   @State private var isPresented = false
 
@@ -17,7 +18,11 @@ struct PullRequestChecksPopoverButton<Label: View>: View {
     .help("Show pull request checks")
     .accessibilityLabel("Show pull request checks")
     .popover(isPresented: $isPresented) {
-      PullRequestChecksPopoverView(checks: checks, pullRequestURL: pullRequestURL)
+      PullRequestChecksPopoverView(
+        checks: checks,
+        pullRequestURL: pullRequestURL,
+        pullRequestTitle: pullRequestTitle
+      )
     }
   }
 }

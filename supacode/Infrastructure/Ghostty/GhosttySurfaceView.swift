@@ -22,6 +22,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
   private var pendingFocus = false
   private var lastPerformKeyEvent: TimeInterval?
   private var currentCursor: NSCursor = .iBeam
+  private var focused = false
   private var markedText = NSMutableAttributedString()
   private var keyTextAccumulator: [String]?
   private var cellSize: CGSize = .zero
@@ -164,6 +165,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
   override func becomeFirstResponder() -> Bool {
     let result = super.becomeFirstResponder()
     if result {
+      focused = true
       setSurfaceFocus(true)
       onFocusChange?(true)
     }
@@ -173,6 +175,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
   override func resignFirstResponder() -> Bool {
     let result = super.resignFirstResponder()
     if result {
+      focused = false
       setSurfaceFocus(false)
       onFocusChange?(false)
     }
@@ -455,7 +458,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
   override func performKeyEquivalent(with event: NSEvent) -> Bool {
     guard event.type == .keyDown else { return false }
     guard let surface else { return false }
-    guard window?.firstResponder === self else { return false }
+    guard focused else { return false }
 
     if let bindingFlags = bindingFlags(for: event, surface: surface) {
       if shouldAttemptMenu(for: bindingFlags),

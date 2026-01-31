@@ -17,7 +17,7 @@ struct GitClientDependency {
       _ baseRef: String
     ) async throws
       -> Worktree
-  var removeWorktree: @Sendable (_ worktree: Worktree) async throws -> URL
+  var removeWorktree: @Sendable (_ worktree: Worktree, _ deleteBranch: Bool) async throws -> URL
   var isBareRepository: @Sendable (_ repoRoot: URL) async throws -> Bool
   var branchName: @Sendable (URL) async -> String?
   var lineChanges: @Sendable (URL) async -> (added: Int, removed: Int)?
@@ -42,8 +42,8 @@ extension GitClientDependency: DependencyKey {
         baseRef: baseRef
       )
     },
-    removeWorktree: { worktree in
-      try await GitClient().removeWorktree(worktree)
+    removeWorktree: { worktree, deleteBranch in
+      try await GitClient().removeWorktree(worktree, deleteBranch: deleteBranch)
     },
     isBareRepository: { repoRoot in
       try await GitClient().isBareRepository(for: repoRoot)

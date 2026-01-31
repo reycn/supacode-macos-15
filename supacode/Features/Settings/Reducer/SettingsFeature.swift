@@ -11,6 +11,7 @@ struct SettingsFeature {
     var updatesAutomaticallyDownloadUpdates: Bool
     var inAppNotificationsEnabled: Bool
     var notificationSoundEnabled: Bool
+    var deleteBranchOnArchive: Bool
     var selection: SettingsSection = .general
     var repositorySettings: RepositorySettingsFeature.State?
 
@@ -21,6 +22,7 @@ struct SettingsFeature {
       updatesAutomaticallyDownloadUpdates = settings.updatesAutomaticallyDownloadUpdates
       inAppNotificationsEnabled = settings.inAppNotificationsEnabled
       notificationSoundEnabled = settings.notificationSoundEnabled
+      deleteBranchOnArchive = settings.deleteBranchOnArchive
     }
 
     var globalSettings: GlobalSettings {
@@ -30,7 +32,8 @@ struct SettingsFeature {
         updatesAutomaticallyCheckForUpdates: updatesAutomaticallyCheckForUpdates,
         updatesAutomaticallyDownloadUpdates: updatesAutomaticallyDownloadUpdates,
         inAppNotificationsEnabled: inAppNotificationsEnabled,
-        notificationSoundEnabled: notificationSoundEnabled
+        notificationSoundEnabled: notificationSoundEnabled,
+        deleteBranchOnArchive: deleteBranchOnArchive
       )
     }
   }
@@ -44,6 +47,7 @@ struct SettingsFeature {
     case setUpdatesAutomaticallyDownloadUpdates(Bool)
     case setInAppNotificationsEnabled(Bool)
     case setNotificationSoundEnabled(Bool)
+    case setDeleteBranchOnArchive(Bool)
     case setSelection(SettingsSection)
     case repositorySettings(RepositorySettingsFeature.Action)
     case delegate(Delegate)
@@ -71,6 +75,7 @@ struct SettingsFeature {
         state.updatesAutomaticallyDownloadUpdates = settings.updatesAutomaticallyDownloadUpdates
         state.inAppNotificationsEnabled = settings.inAppNotificationsEnabled
         state.notificationSoundEnabled = settings.notificationSoundEnabled
+        state.deleteBranchOnArchive = settings.deleteBranchOnArchive
         return .send(.delegate(.settingsChanged(settings)))
 
       case .setAppearanceMode(let mode):
@@ -125,6 +130,16 @@ struct SettingsFeature {
 
       case .setNotificationSoundEnabled(let value):
         state.notificationSoundEnabled = value
+        let settings = state.globalSettings
+        return .merge(
+          .send(.delegate(.settingsChanged(settings))),
+          .run { _ in
+            await settingsClient.save(settings)
+          }
+        )
+
+      case .setDeleteBranchOnArchive(let value):
+        state.deleteBranchOnArchive = value
         let settings = state.globalSettings
         return .merge(
           .send(.delegate(.settingsChanged(settings))),

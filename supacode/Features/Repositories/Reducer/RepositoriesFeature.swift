@@ -106,6 +106,7 @@ struct RepositoriesFeature {
   @Dependency(\.githubCLI) private var githubCLI
   @Dependency(\.repositoryPersistence) private var repositoryPersistence
   @Dependency(\.repositorySettingsClient) private var repositorySettingsClient
+  @Dependency(\.settingsClient) private var settingsClient
 
   var body: some Reducer<State, Action> {
     Reduce { state, action in
@@ -470,7 +471,7 @@ struct RepositoriesFeature {
         } message: {
           TextState(
             "Remove \(worktree.name)? "
-              + "This deletes the worktree directory and its branch."
+              + "This deletes the worktree directory. Local branch removal is controlled in Worktree settings."
           )
         }
         return .none
@@ -494,9 +495,14 @@ struct RepositoriesFeature {
           selectionWasRemoved
           ? nextWorktreeID(afterRemoving: worktree, in: repository, state: state)
           : nil
+        let settingsClient = settingsClient
         return .run { send in
           do {
-            _ = try await gitClient.removeWorktree(worktree)
+            let settings = await settingsClient.load()
+            _ = try await gitClient.removeWorktree(
+              worktree,
+              settings.deleteBranchOnArchive
+            )
             await send(
               .worktreeRemoved(
                 worktree.id,

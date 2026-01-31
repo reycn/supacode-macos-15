@@ -320,7 +320,7 @@ struct GitClient {
     return nil
   }
 
-  nonisolated func removeWorktree(_ worktree: Worktree) async throws -> URL {
+  nonisolated func removeWorktree(_ worktree: Worktree, deleteBranch: Bool) async throws -> URL {
     let rootPath = worktree.repositoryRootURL.path(percentEncoded: false)
     let worktreePath = worktree.workingDirectory.path(percentEncoded: false)
     _ = try await runGit(
@@ -334,7 +334,7 @@ struct GitClient {
         worktreePath,
       ]
     )
-    if !worktree.name.isEmpty {
+    if deleteBranch, !worktree.name.isEmpty {
       let names = try await localBranchNames(for: worktree.repositoryRootURL)
       if names.contains(worktree.name.lowercased()) {
         _ = try await runGit(

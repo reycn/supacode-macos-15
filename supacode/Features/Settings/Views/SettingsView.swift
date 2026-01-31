@@ -34,6 +34,8 @@ struct SettingsView: View {
             .tag(SettingsSection.general)
           Label("Notifications", systemImage: "bell")
             .tag(SettingsSection.notifications)
+          Label("Worktree", systemImage: "archivebox")
+            .tag(SettingsSection.worktree)
           Label("Updates", systemImage: "arrow.down.circle")
             .tag(SettingsSection.updates)
           Label("GitHub", systemImage: "arrow.triangle.branch")
@@ -64,6 +66,12 @@ struct SettingsView: View {
           NotificationsSettingsView(store: settingsStore)
             .navigationTitle("Notifications")
             .navigationSubtitle("In-app alerts and delivery")
+        }
+      case .worktree:
+        SettingsDetailView {
+          WorktreeSettingsView(store: settingsStore)
+            .navigationTitle("Worktree")
+            .navigationSubtitle("Archive behavior")
         }
       case .updates:
         SettingsDetailView {

@@ -5,6 +5,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
   var updatesAutomaticallyDownloadUpdates: Bool
   var inAppNotificationsEnabled: Bool
   var notificationSoundEnabled: Bool
+  var deleteBranchOnArchive: Bool
 
   static let `default` = GlobalSettings(
     appearanceMode: .dark,
@@ -12,7 +13,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     updatesAutomaticallyCheckForUpdates: true,
     updatesAutomaticallyDownloadUpdates: false,
     inAppNotificationsEnabled: true,
-    notificationSoundEnabled: true
+    notificationSoundEnabled: true,
+    deleteBranchOnArchive: true
   )
 
   init(
@@ -21,7 +23,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     updatesAutomaticallyCheckForUpdates: Bool,
     updatesAutomaticallyDownloadUpdates: Bool,
     inAppNotificationsEnabled: Bool,
-    notificationSoundEnabled: Bool
+    notificationSoundEnabled: Bool,
+    deleteBranchOnArchive: Bool
   ) {
     self.appearanceMode = appearanceMode
     self.confirmBeforeQuit = confirmBeforeQuit
@@ -29,6 +32,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     self.updatesAutomaticallyDownloadUpdates = updatesAutomaticallyDownloadUpdates
     self.inAppNotificationsEnabled = inAppNotificationsEnabled
     self.notificationSoundEnabled = notificationSoundEnabled
+    self.deleteBranchOnArchive = deleteBranchOnArchive
   }
 
   init(from decoder: any Decoder) throws {
@@ -45,5 +49,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     notificationSoundEnabled =
       try container.decodeIfPresent(Bool.self, forKey: .notificationSoundEnabled)
       ?? Self.default.notificationSoundEnabled
+    deleteBranchOnArchive =
+      try container.decodeIfPresent(Bool.self, forKey: .deleteBranchOnArchive)
+      ?? Self.default.deleteBranchOnArchive
   }
 }

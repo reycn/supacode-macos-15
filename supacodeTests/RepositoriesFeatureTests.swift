@@ -56,7 +56,10 @@ struct RepositoriesFeatureTests {
         TextState("Cancel")
       }
     } message: {
-      TextState("Remove \(worktree.name)? This deletes the worktree directory and its branch.")
+      TextState(
+        "Remove \(worktree.name)? This deletes the worktree directory. "
+          + "Local branch removal is controlled in Worktree settings."
+      )
     }
 
     await store.send(.requestRemoveWorktree(worktree.id, repository.id))

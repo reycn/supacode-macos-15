@@ -81,6 +81,7 @@ struct RepositoriesFeature {
     case worktreeBranchNameLoaded(worktreeID: Worktree.ID, name: String)
     case worktreeLineChangesLoaded(worktreeID: Worktree.ID, added: Int, removed: Int)
     case worktreePullRequestLoaded(worktreeID: Worktree.ID, pullRequest: GithubPullRequest?)
+    case setGithubIntegrationEnabled(Bool)
     case openRepositorySettings(Repository.ID)
     case alert(PresentationAction<Alert>)
     case delegate(Delegate)
@@ -104,6 +105,7 @@ struct RepositoriesFeature {
 
   @Dependency(\.gitClient) private var gitClient
   @Dependency(\.githubCLI) private var githubCLI
+  @Dependency(\.githubIntegration) private var githubIntegration
   @Dependency(\.repositoryPersistence) private var repositoryPersistence
   @Dependency(\.repositorySettingsClient) private var repositorySettingsClient
 
@@ -698,7 +700,8 @@ struct RepositoriesFeature {
         case .repositoryPullRequestRefresh(let repositoryRootURL, let worktreeIDs):
           let worktrees = worktreeIDs.compactMap { state.worktree(for: $0) }
           var seen = Set<String>()
-          let branches = worktrees
+          let branches =
+            worktrees
             .map(\.name)
             .filter { !$0.isEmpty && seen.insert($0).inserted }
           guard !branches.isEmpty else {
@@ -706,8 +709,9 @@ struct RepositoriesFeature {
           }
           let gitClient = gitClient
           let githubCLI = githubCLI
+          let githubIntegration = githubIntegration
           return .run { send in
-            guard await githubCLI.isAvailable() else {
+            guard await githubIntegration.isAvailable() else {
               return
             }
             guard let remoteInfo = await gitClient.remoteInfo(repositoryRootURL) else {
@@ -754,6 +758,20 @@ struct RepositoriesFeature {
           pullRequest: pullRequest,
           state: &state
         )
+        return .none
+
+      case .setGithubIntegrationEnabled(let isEnabled):
+        guard !isEnabled else {
+          return .none
+        }
+        let worktreeIDs = Array(state.worktreeInfoByID.keys)
+        for worktreeID in worktreeIDs {
+          updateWorktreePullRequest(
+            worktreeID: worktreeID,
+            pullRequest: nil,
+            state: &state
+          )
+        }
         return .none
 
       case .openRepositorySettings(let repositoryID):
@@ -1032,7 +1050,7 @@ extension RepositoriesFeature.State {
   var confirmRemoveWorktreeIDs: (worktreeID: Worktree.ID, repositoryID: Repository.ID)? {
     guard let alert else { return nil }
     for button in alert.buttons {
-      if case let .confirmRemoveWorktree(worktreeID, repositoryID)? = button.action.action {
+      if case .confirmRemoveWorktree(let worktreeID, let repositoryID)? = button.action.action {
         return (worktreeID: worktreeID, repositoryID: repositoryID)
       }
     }

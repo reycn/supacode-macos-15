@@ -5,7 +5,7 @@ import SwiftUI
 final class GithubSettingsViewModel {
   enum State: Equatable {
     case loading
-    case notInstalled
+    case unavailable
     case notAuthenticated
     case authenticated(username: String, host: String)
     case error(String)
@@ -14,13 +14,16 @@ final class GithubSettingsViewModel {
   var state: State = .loading
 
   @ObservationIgnored
+  @Dependency(\.githubIntegration) private var githubIntegration
+
+  @ObservationIgnored
   @Dependency(\.githubCLI) private var githubCLI
 
   func load() async {
     state = .loading
-    let isAvailable = await githubCLI.isAvailable()
+    let isAvailable = await githubIntegration.isAvailable()
     guard isAvailable else {
-      state = .notInstalled
+      state = .unavailable
       return
     }
 
@@ -37,11 +40,22 @@ final class GithubSettingsViewModel {
 }
 
 struct GithubSettingsView: View {
+  @Bindable var store: StoreOf<SettingsFeature>
   @State private var viewModel = GithubSettingsViewModel()
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       Form {
+        Section("GitHub integration") {
+          Toggle(
+            "Enable GitHub integration",
+            isOn: Binding(
+              get: { store.githubIntegrationEnabled },
+              set: { store.send(.setGithubIntegrationEnabled($0)) }
+            )
+          )
+          .help("Enable GitHub integration")
+        }
         Section("GitHub CLI") {
           switch viewModel.state {
           case .loading:
@@ -52,11 +66,11 @@ struct GithubSettingsView: View {
                 .foregroundStyle(.secondary)
             }
 
-          case .notInstalled:
+          case .unavailable:
             VStack(alignment: .leading, spacing: 8) {
-              Label("GitHub CLI not installed", systemImage: "xmark.circle")
+              Label("GitHub integration unavailable", systemImage: "xmark.circle")
                 .foregroundStyle(.red)
-              Text("Install gh CLI to enable GitHub integration.")
+              Text("Enable GitHub integration and install gh CLI to use pull request checks.")
                 .foregroundStyle(.secondary)
                 .font(.callout)
             }
@@ -93,7 +107,7 @@ struct GithubSettingsView: View {
       }
       .formStyle(.grouped)
 
-      if case .notInstalled = viewModel.state {
+      if case .unavailable = viewModel.state {
         HStack {
           Button("Get GitHub CLI") {
             NSWorkspace.shared.open(URL(string: "https://cli.github.com")!)
@@ -107,6 +121,11 @@ struct GithubSettingsView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .task {
       await viewModel.load()
+    }
+    .onChange(of: store.githubIntegrationEnabled) { _, _ in
+      Task {
+        await viewModel.load()
+      }
     }
   }
 }

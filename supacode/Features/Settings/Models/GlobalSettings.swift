@@ -5,6 +5,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
   var updatesAutomaticallyDownloadUpdates: Bool
   var inAppNotificationsEnabled: Bool
   var notificationSoundEnabled: Bool
+  var githubIntegrationEnabled: Bool
 
   static let `default` = GlobalSettings(
     appearanceMode: .dark,
@@ -12,7 +13,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     updatesAutomaticallyCheckForUpdates: true,
     updatesAutomaticallyDownloadUpdates: false,
     inAppNotificationsEnabled: true,
-    notificationSoundEnabled: true
+    notificationSoundEnabled: true,
+    githubIntegrationEnabled: true
   )
 
   init(
@@ -21,7 +23,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     updatesAutomaticallyCheckForUpdates: Bool,
     updatesAutomaticallyDownloadUpdates: Bool,
     inAppNotificationsEnabled: Bool,
-    notificationSoundEnabled: Bool
+    notificationSoundEnabled: Bool,
+    githubIntegrationEnabled: Bool
   ) {
     self.appearanceMode = appearanceMode
     self.confirmBeforeQuit = confirmBeforeQuit
@@ -29,6 +32,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     self.updatesAutomaticallyDownloadUpdates = updatesAutomaticallyDownloadUpdates
     self.inAppNotificationsEnabled = inAppNotificationsEnabled
     self.notificationSoundEnabled = notificationSoundEnabled
+    self.githubIntegrationEnabled = githubIntegrationEnabled
   }
 
   init(from decoder: any Decoder) throws {
@@ -45,5 +49,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     notificationSoundEnabled =
       try container.decodeIfPresent(Bool.self, forKey: .notificationSoundEnabled)
       ?? Self.default.notificationSoundEnabled
+    githubIntegrationEnabled =
+      try container.decodeIfPresent(Bool.self, forKey: .githubIntegrationEnabled)
+      ?? Self.default.githubIntegrationEnabled
   }
 }

@@ -196,6 +196,7 @@ struct AppFeature {
 
       case .settings(.delegate(.settingsChanged(let settings))):
         return .merge(
+          .send(.repositories(.setGithubIntegrationEnabled(settings.githubIntegrationEnabled))),
           .send(
             .updates(
               .applySettings(
@@ -206,6 +207,11 @@ struct AppFeature {
           ),
           .run { _ in
             await terminalClient.send(.setNotificationsEnabled(settings.inAppNotificationsEnabled))
+          },
+          .run { _ in
+            await worktreeInfoWatcher.send(
+              .setPullRequestTrackingEnabled(settings.githubIntegrationEnabled)
+            )
           }
         )
 

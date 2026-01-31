@@ -20,6 +20,7 @@ struct WorktreeCommands: Commands {
     let repositories = viewStore.state.repositories
     let orderedRows = repositories.orderedWorktreeRows()
     let pullRequestURL = selectedPullRequestURL
+    let githubIntegrationEnabled = viewStore.state.settings.githubIntegrationEnabled
     CommandMenu("Worktrees") {
       ForEach(worktreeShortcuts.indices, id: \.self) { index in
         let shortcut = worktreeShortcuts[index]
@@ -54,7 +55,7 @@ struct WorktreeCommands: Commands {
         modifiers: AppShortcuts.openPullRequest.modifiers
       )
       .help("Open Pull Request on GitHub (\(AppShortcuts.openPullRequest.display))")
-      .disabled(pullRequestURL == nil)
+      .disabled(pullRequestURL == nil || !githubIntegrationEnabled)
       Button("New Worktree", systemImage: "plus") {
         store.send(.repositories(.createRandomWorktree))
       }

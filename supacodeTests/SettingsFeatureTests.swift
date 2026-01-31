@@ -14,7 +14,8 @@ struct SettingsFeatureTests {
       updatesAutomaticallyCheckForUpdates: false,
       updatesAutomaticallyDownloadUpdates: true,
       inAppNotificationsEnabled: false,
-      notificationSoundEnabled: true
+      notificationSoundEnabled: true,
+      githubIntegrationEnabled: true
     )
     let store = TestStore(initialState: SettingsFeature.State()) {
       SettingsFeature()
@@ -30,6 +31,7 @@ struct SettingsFeatureTests {
       $0.updatesAutomaticallyDownloadUpdates = true
       $0.inAppNotificationsEnabled = false
       $0.notificationSoundEnabled = true
+      $0.githubIntegrationEnabled = true
     }
     await store.receive(.delegate(.settingsChanged(loaded)))
   }
@@ -41,7 +43,8 @@ struct SettingsFeatureTests {
       updatesAutomaticallyCheckForUpdates: false,
       updatesAutomaticallyDownloadUpdates: false,
       inAppNotificationsEnabled: false,
-      notificationSoundEnabled: false
+      notificationSoundEnabled: false,
+      githubIntegrationEnabled: true
     )
     let saved = LockIsolated<GlobalSettings?>(nil)
     let store = TestStore(initialState: SettingsFeature.State(settings: initialSettings)) {
@@ -64,7 +67,8 @@ struct SettingsFeatureTests {
       updatesAutomaticallyCheckForUpdates: initialSettings.updatesAutomaticallyCheckForUpdates,
       updatesAutomaticallyDownloadUpdates: initialSettings.updatesAutomaticallyDownloadUpdates,
       inAppNotificationsEnabled: initialSettings.inAppNotificationsEnabled,
-      notificationSoundEnabled: initialSettings.notificationSoundEnabled
+      notificationSoundEnabled: initialSettings.notificationSoundEnabled,
+      githubIntegrationEnabled: initialSettings.githubIntegrationEnabled
     )
     await store.receive(.delegate(.settingsChanged(expectedSettings)))
 
@@ -106,7 +110,8 @@ struct SettingsFeatureTests {
       updatesAutomaticallyCheckForUpdates: false,
       updatesAutomaticallyDownloadUpdates: true,
       inAppNotificationsEnabled: false,
-      notificationSoundEnabled: false
+      notificationSoundEnabled: false,
+      githubIntegrationEnabled: true
     )
 
     await store.send(.settingsLoaded(loaded)) {
@@ -116,6 +121,7 @@ struct SettingsFeatureTests {
       $0.updatesAutomaticallyDownloadUpdates = true
       $0.inAppNotificationsEnabled = false
       $0.notificationSoundEnabled = false
+      $0.githubIntegrationEnabled = true
       $0.selection = selection
       $0.repositorySettings = RepositorySettingsFeature.State(
         rootURL: rootURL,

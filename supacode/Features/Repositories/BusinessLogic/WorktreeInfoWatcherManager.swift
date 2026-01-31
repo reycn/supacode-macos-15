@@ -27,6 +27,7 @@ final class WorktreeInfoWatcherManager {
   private var pullRequestTasks: [URL: RefreshTask] = [:]
   private var lineChangeTasks: [Worktree.ID: RefreshTask] = [:]
   private var selectedWorktreeID: Worktree.ID?
+  private var pullRequestTrackingEnabled = true
   private var eventContinuation: AsyncStream<WorktreeInfoWatcherClient.Event>.Continuation?
 
   func handleCommand(_ command: WorktreeInfoWatcherClient.Command) {
@@ -35,6 +36,8 @@ final class WorktreeInfoWatcherManager {
       setWorktrees(worktrees)
     case .setSelectedWorktreeID(let worktreeID):
       setSelectedWorktreeID(worktreeID)
+    case .setPullRequestTrackingEnabled(let isEnabled):
+      setPullRequestTrackingEnabled(isEnabled)
     case .stop:
       stopAll()
     }
@@ -237,10 +240,33 @@ final class WorktreeInfoWatcherManager {
     lineChangeTasks.removeAll()
     worktrees.removeAll()
     selectedWorktreeID = nil
+    pullRequestTrackingEnabled = true
     eventContinuation?.finish()
   }
 
+  private func setPullRequestTrackingEnabled(_ enabled: Bool) {
+    guard pullRequestTrackingEnabled != enabled else {
+      return
+    }
+    pullRequestTrackingEnabled = enabled
+    if enabled {
+      let repositoryRoots = Set(worktrees.values.map(\.repositoryRootURL))
+      for repositoryRootURL in repositoryRoots {
+        updatePullRequestSchedule(repositoryRootURL: repositoryRootURL, immediate: true)
+      }
+      return
+    }
+    for task in pullRequestTasks.values {
+      task.task.cancel()
+    }
+    pullRequestTasks.removeAll()
+  }
+
   private func updatePullRequestSchedule(repositoryRootURL: URL, immediate: Bool) {
+    guard pullRequestTrackingEnabled else {
+      pullRequestTasks.removeValue(forKey: repositoryRootURL)?.task.cancel()
+      return
+    }
     let worktreeIDs = repositoryWorktreeIDs(for: repositoryRootURL)
     guard !worktreeIDs.isEmpty else {
       pullRequestTasks.removeValue(forKey: repositoryRootURL)?.task.cancel()
@@ -275,6 +301,9 @@ final class WorktreeInfoWatcherManager {
   }
 
   private func emitPullRequestRefresh(repositoryRootURL: URL) {
+    guard pullRequestTrackingEnabled else {
+      return
+    }
     let worktreeIDs = repositoryWorktreeIDs(for: repositoryRootURL)
     guard !worktreeIDs.isEmpty else {
       return

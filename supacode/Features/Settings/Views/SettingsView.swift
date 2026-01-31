@@ -73,7 +73,7 @@ struct SettingsView: View {
         }
       case .github:
         SettingsDetailView {
-          GithubSettingsView()
+          GithubSettingsView(store: settingsStore)
             .navigationTitle("GitHub")
             .navigationSubtitle("GitHub CLI integration")
         }

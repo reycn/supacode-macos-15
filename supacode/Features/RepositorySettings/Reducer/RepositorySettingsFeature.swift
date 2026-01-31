@@ -8,13 +8,18 @@ struct RepositorySettingsFeature {
     var rootURL: URL
     var settings: RepositorySettings
     var isBareRepository = false
+    var branchOptions: [String] = []
+    var defaultWorktreeBaseRef = "origin/main"
+    var isBranchDataLoaded = false
   }
 
   enum Action: Equatable {
     case task
     case settingsLoaded(RepositorySettings, isBareRepository: Bool)
+    case branchDataLoaded([String], defaultBaseRef: String)
     case setSetupScript(String)
     case setRunScript(String)
+    case setWorktreeBaseRef(String)
     case setCopyIgnoredOnWorktreeCreate(Bool)
     case setCopyUntrackedOnWorktreeCreate(Bool)
     case delegate(Delegate)
@@ -38,11 +43,37 @@ struct RepositorySettingsFeature {
           let settings = repositorySettingsClient.load(rootURL)
           let isBareRepository = (try? await gitClient.isBareRepository(rootURL)) ?? false
           await send(.settingsLoaded(settings, isBareRepository: isBareRepository))
+          let branches: [String]
+          do {
+            branches = try await gitClient.branchRefs(rootURL)
+          } catch {
+            let rootPath = rootURL.path(percentEncoded: false)
+            print(
+              "Repository settings branch refs failed for \(rootPath): "
+                + error.localizedDescription
+            )
+            branches = []
+          }
+          let defaultBaseRef = await gitClient.automaticWorktreeBaseRef(rootURL) ?? "HEAD"
+          await send(.branchDataLoaded(branches, defaultBaseRef: defaultBaseRef))
         }
 
       case .settingsLoaded(let settings, let isBareRepository):
         state.settings = settings
         state.isBareRepository = isBareRepository
+        return .none
+
+      case .branchDataLoaded(let branches, let defaultBaseRef):
+        state.defaultWorktreeBaseRef = defaultBaseRef
+        var options = branches
+        if !options.contains(defaultBaseRef) {
+          options.append(defaultBaseRef)
+        }
+        if let selected = state.settings.worktreeBaseRef, !options.contains(selected) {
+          options.append(selected)
+        }
+        state.branchOptions = options
+        state.isBranchDataLoaded = true
         return .none
 
       case .setSetupScript(let script):
@@ -57,6 +88,16 @@ struct RepositorySettingsFeature {
 
       case .setRunScript(let script):
         state.settings.runScript = script
+        let settings = state.settings
+        let rootURL = state.rootURL
+        let repositorySettingsClient = repositorySettingsClient
+        return .run { send in
+          repositorySettingsClient.save(settings, rootURL)
+          await send(.delegate(.settingsChanged(rootURL)))
+        }
+
+      case .setWorktreeBaseRef(let ref):
+        state.settings.worktreeBaseRef = ref
         let settings = state.settings
         let rootURL = state.rootURL
         let repositorySettingsClient = repositorySettingsClient

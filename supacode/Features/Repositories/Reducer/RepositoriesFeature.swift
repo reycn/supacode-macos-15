@@ -20,6 +20,8 @@ struct RepositoriesFeature {
     var deletingWorktreeIDs: Set<Worktree.ID> = []
     var removingRepositoryIDs: Set<Repository.ID> = []
     var pinnedWorktreeIDs: [Worktree.ID] = []
+    var lastFocusedWorktreeID: Worktree.ID?
+    var shouldRestoreLastFocusedWorktree = false
     var shouldSelectFirstAfterReload = false
     @Presents var alert: AlertState<Alert>?
   }
@@ -29,6 +31,7 @@ struct RepositoriesFeature {
     case setOpenPanelPresented(Bool)
     case loadPersistedRepositories
     case pinnedWorktreeIDsLoaded([Worktree.ID])
+    case lastFocusedWorktreeIDLoaded(Worktree.ID?)
     case refreshWorktrees
     case reloadRepositories(animated: Bool)
     case repositoriesLoaded([Repository], failures: [LoadFailure], roots: [URL], animated: Bool)
@@ -107,12 +110,19 @@ struct RepositoriesFeature {
       case .task:
         return .run { send in
           let pinned = await repositoryPersistence.loadPinnedWorktreeIDs()
+          let lastFocused = await repositoryPersistence.loadLastFocusedWorktreeID()
           await send(.pinnedWorktreeIDsLoaded(pinned))
+          await send(.lastFocusedWorktreeIDLoaded(lastFocused))
           await send(.loadPersistedRepositories)
         }
 
       case .pinnedWorktreeIDsLoaded(let pinnedWorktreeIDs):
         state.pinnedWorktreeIDs = pinnedWorktreeIDs
+        return .none
+
+      case .lastFocusedWorktreeIDLoaded(let lastFocusedWorktreeID):
+        state.lastFocusedWorktreeID = lastFocusedWorktreeID
+        state.shouldRestoreLastFocusedWorktree = true
         return .none
 
       case .setOpenPanelPresented(let isPresented):
@@ -335,6 +345,7 @@ struct RepositoriesFeature {
         let previousSelection = state.selectedWorktreeID
         let pendingID = "pending:\(UUID().uuidString)"
         let repositorySettings = repositorySettingsClient.load(repository.rootURL)
+        let selectedBaseRef = repositorySettings.worktreeBaseRef
         state.pendingWorktrees.append(
           PendingWorktree(
             id: pendingID,
@@ -369,11 +380,18 @@ struct RepositoriesFeature {
             let isBareRepository = (try? await gitClient.isBareRepository(repository.rootURL)) ?? false
             let copyIgnored = isBareRepository ? false : repositorySettings.copyIgnoredOnWorktreeCreate
             let copyUntracked = isBareRepository ? false : repositorySettings.copyUntrackedOnWorktreeCreate
+            let resolvedBaseRef: String
+            if (selectedBaseRef ?? "").isEmpty {
+              resolvedBaseRef = await gitClient.automaticWorktreeBaseRef(repository.rootURL) ?? ""
+            } else {
+              resolvedBaseRef = selectedBaseRef ?? ""
+            }
             let newWorktree = try await gitClient.createWorktree(
               name,
               repository.rootURL,
               copyIgnored,
-              copyUntracked
+              copyUntracked,
+              resolvedBaseRef
             )
             await send(
               .createRandomWorktreeSucceeded(
@@ -458,7 +476,7 @@ struct RepositoriesFeature {
           TextState("🚨 Remove worktree?")
         } actions: {
           ButtonState(role: .destructive, action: .confirmRemoveWorktree(worktree.id, repository.id)) {
-            TextState("Remove")
+            TextState("Remove (⌘↩)")
           }
           ButtonState(role: .cancel) {
             TextState("Cancel")
@@ -839,6 +857,14 @@ struct RepositoriesFeature {
     if !isSelectionValid(state.selectedWorktreeID, state: state) {
       state.selectedWorktreeID = nil
     }
+    if state.shouldRestoreLastFocusedWorktree {
+      state.shouldRestoreLastFocusedWorktree = false
+      if state.selectedWorktreeID == nil,
+        isSelectionValid(state.lastFocusedWorktreeID, state: state)
+      {
+        state.selectedWorktreeID = state.lastFocusedWorktreeID
+      }
+    }
     if state.selectedWorktreeID == nil, state.shouldSelectFirstAfterReload {
       state.selectedWorktreeID = firstAvailableWorktreeID(from: repositories, state: state)
       state.shouldSelectFirstAfterReload = false
@@ -1022,6 +1048,16 @@ extension RepositoriesFeature.State {
 
   func isWorktreePinned(_ worktree: Worktree) -> Bool {
     pinnedWorktreeIDs.contains(worktree.id)
+  }
+
+  var confirmRemoveWorktreeIDs: (worktreeID: Worktree.ID, repositoryID: Repository.ID)? {
+    guard let alert else { return nil }
+    for button in alert.buttons {
+      if case let .confirmRemoveWorktree(worktreeID, repositoryID)? = button.action.action {
+        return (worktreeID: worktreeID, repositoryID: repositoryID)
+      }
+    }
+    return nil
   }
 
   func isRemovingRepository(_ repository: Repository) -> Bool {

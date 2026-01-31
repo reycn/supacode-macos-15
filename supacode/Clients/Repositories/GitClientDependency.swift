@@ -5,8 +5,17 @@ struct GitClientDependency {
   var repoRoot: @Sendable (URL) async throws -> URL
   var worktrees: @Sendable (URL) async throws -> [Worktree]
   var localBranchNames: @Sendable (URL) async throws -> Set<String>
+  var branchRefs: @Sendable (URL) async throws -> [String]
+  var defaultRemoteBranchRef: @Sendable (URL) async throws -> String?
+  var automaticWorktreeBaseRef: @Sendable (URL) async -> String?
   var createWorktree:
-    @Sendable (_ name: String, _ repoRoot: URL, _ copyIgnored: Bool, _ copyUntracked: Bool) async throws
+    @Sendable (
+      _ name: String,
+      _ repoRoot: URL,
+      _ copyIgnored: Bool,
+      _ copyUntracked: Bool,
+      _ baseRef: String
+    ) async throws
       -> Worktree
   var removeWorktree: @Sendable (_ worktree: Worktree) async throws -> URL
   var isBareRepository: @Sendable (_ repoRoot: URL) async throws -> Bool
@@ -21,12 +30,16 @@ extension GitClientDependency: DependencyKey {
     repoRoot: { try await GitClient().repoRoot(for: $0) },
     worktrees: { try await GitClient().worktrees(for: $0) },
     localBranchNames: { try await GitClient().localBranchNames(for: $0) },
-    createWorktree: { name, repoRoot, copyIgnored, copyUntracked in
+    branchRefs: { try await GitClient().branchRefs(for: $0) },
+    defaultRemoteBranchRef: { try await GitClient().defaultRemoteBranchRef(for: $0) },
+    automaticWorktreeBaseRef: { await GitClient().automaticWorktreeBaseRef(for: $0) },
+    createWorktree: { name, repoRoot, copyIgnored, copyUntracked, baseRef in
       try await GitClient().createWorktree(
         named: name,
         in: repoRoot,
         copyIgnored: copyIgnored,
-        copyUntracked: copyUntracked
+        copyUntracked: copyUntracked,
+        baseRef: baseRef
       )
     },
     removeWorktree: { worktree in

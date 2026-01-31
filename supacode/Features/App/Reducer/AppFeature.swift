@@ -43,6 +43,7 @@ struct AppFeature {
     case openSelectedWorktree
     case openWorktree(OpenWorktreeAction)
     case openWorktreeFailed(OpenActionError)
+    case requestQuit
     case newTerminal
     case runScript
     case stopRunScript
@@ -59,9 +60,11 @@ struct AppFeature {
 
   enum Alert: Equatable {
     case dismiss
+    case confirmQuit
   }
 
   @Dependency(\.repositorySettingsClient) private var repositorySettingsClient
+  @Dependency(\.repositoryPersistence) private var repositoryPersistence
   @Dependency(\.workspaceClient) private var workspaceClient
   @Dependency(\.terminalClient) private var terminalClient
   @Dependency(\.worktreeInfoWatcher) private var worktreeInfoWatcher
@@ -94,10 +97,15 @@ struct AppFeature {
         }
 
       case .repositories(.delegate(.selectedWorktreeChanged(let worktree))):
+        let lastFocusedWorktreeID = worktree?.id
+        let repositoryPersistence = repositoryPersistence
         guard let worktree else {
           state.openActionSelection = .finder
           state.selectedRunScript = ""
           return .merge(
+            .run { _ in
+              await repositoryPersistence.saveLastFocusedWorktreeID(lastFocusedWorktreeID)
+            },
             .run { _ in
               await terminalClient.send(.setSelectedWorktreeID(nil))
             },
@@ -110,6 +118,9 @@ struct AppFeature {
         let worktreeID = worktree.id
         let repositorySettingsClient = repositorySettingsClient
         return .merge(
+          .run { _ in
+            await repositoryPersistence.saveLastFocusedWorktreeID(lastFocusedWorktreeID)
+          },
           .run { _ in
             await terminalClient.send(.setSelectedWorktreeID(worktree.id))
             await terminalClient.send(.clearNotificationIndicator(worktree))
@@ -237,6 +248,26 @@ struct AppFeature {
         }
         return .none
 
+      case .requestQuit:
+        guard state.settings.confirmBeforeQuit else {
+          return .run { @MainActor _ in
+            NSApplication.shared.terminate(nil)
+          }
+        }
+        state.alert = AlertState {
+          TextState("Quit Supacode?")
+        } actions: {
+          ButtonState(role: .cancel, action: .dismiss) {
+            TextState("Cancel")
+          }
+          ButtonState(role: .destructive, action: .confirmQuit) {
+            TextState("Quit")
+          }
+        } message: {
+          TextState("This will close all terminal sessions.")
+        }
+        return .none
+
       case .newTerminal:
         guard let worktree = state.repositories.worktree(for: state.repositories.selectedWorktreeID) else {
           return .none
@@ -353,6 +384,12 @@ struct AppFeature {
       case .alert(.dismiss):
         state.alert = nil
         return .none
+
+      case .alert(.presented(.confirmQuit)):
+        state.alert = nil
+        return .run { @MainActor _ in
+          NSApplication.shared.terminate(nil)
+        }
 
       case .alert:
         return .none

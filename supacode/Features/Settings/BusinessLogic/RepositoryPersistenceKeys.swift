@@ -116,4 +116,5 @@ nonisolated enum RepositoryPathNormalizer {
     }
     return normalized
   }
+
 }

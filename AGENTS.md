@@ -102,6 +102,7 @@ Always read `./docs/swift-rules.md` before writing Swift code. Key points:
 - Buttons must have tooltips explaining the action and associated hotkey
 - Use Dynamic Type, avoid hardcoded font sizes
 - Components should be layout-agnostic (parents control layout, children control appearance)
+- Never use custom colors, always use system provided ones.
 - We use `.monospaced()` modifier on fonts when apprpropriate
 
 ## Rules
@@ -113,6 +114,10 @@ Always read `./docs/swift-rules.md` before writing Swift code. Key points:
 - Never mention competitors or other apps in commits or PRs
 - Before you go on your task, check the current git branch name, if it's something generic like an animal name, name it accordingly. Do not do this for main branch
 - After implementing an execplan, always submit a PR if you're not in the main branch
+
+## Ghostty
+
+When following/porting Ghostty logic from their macOS app, try to match the implementation exactly, no smartness, no corner cutting. 
 
 ## References
 

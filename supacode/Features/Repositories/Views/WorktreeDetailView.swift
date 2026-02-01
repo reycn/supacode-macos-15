@@ -16,7 +16,12 @@ struct WorktreeDetailView: View {
     let selectedWorktree = repositories.worktree(for: repositories.selectedWorktreeID)
     let loadingInfo = loadingInfo(for: selectedRow, repositories: repositories)
     let hasActiveWorktree = selectedWorktree != nil && loadingInfo == nil
-    let pullRequest = selectedWorktree.flatMap { repositories.worktreeInfoByID[$0.id]?.pullRequest }
+    let pullRequest: GithubPullRequest?
+    if let selectedWorktree, !repositories.isMainWorktree(selectedWorktree) {
+      pullRequest = repositories.worktreeInfoByID[selectedWorktree.id]?.pullRequest
+    } else {
+      pullRequest = nil
+    }
     let openActionSelection = state.openActionSelection
     let runScriptEnabled =
       hasActiveWorktree

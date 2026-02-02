@@ -29,12 +29,12 @@ final class GhosttyFontManager {
     }
   }
 
-  func font(for style: Font.TextStyle) -> Font {
+  func font(for style: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
     if let familyName {
       let size = preferredSize(for: style)
-      return .custom(familyName, size: size, relativeTo: style)
+      return .custom(familyName, size: size, relativeTo: style).weight(weight)
     }
-    return .system(style, design: .monospaced)
+    return .system(style, design: .monospaced).weight(weight)
   }
 
   func font(size: CGFloat, weight: Font.Weight = .regular) -> Font {

@@ -240,7 +240,7 @@ struct WorktreeDetailView: View {
         }
       } label: {
         Image(systemName: "chevron.down")
-          .ghosttyMonospaced(size: 8)
+          .ghosttyMonospaced(.caption2)
           .accessibilityLabel("Open in menu")
       }
       .imageScale(.small)

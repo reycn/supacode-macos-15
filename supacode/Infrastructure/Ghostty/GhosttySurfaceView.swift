@@ -28,6 +28,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
   private var cellSize: CGSize = .zero
   private var lastScrollbar: ScrollbarState?
   private var eventMonitor: Any?
+  private var prevPressureStage: Int = 0
   weak var scrollWrapper: GhosttySurfaceScrollView? {
     didSet {
       if let lastScrollbar {
@@ -292,6 +293,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
   }
 
   override func mouseUp(with event: NSEvent) {
+    prevPressureStage = 0
     sendMouseButton(event, state: GHOSTTY_MOUSE_RELEASE, button: GHOSTTY_MOUSE_LEFT)
   }
 
@@ -348,6 +350,35 @@ final class GhosttySurfaceView: NSView, Identifiable {
       scrollY *= 2
     }
     ghostty_surface_mouse_scroll(surface, scrollX, scrollY, scrollMods(for: event))
+  }
+
+  override func pressureChange(with event: NSEvent) {
+    guard let surface else { return }
+    ghostty_surface_mouse_pressure(surface, UInt32(event.stage), Double(event.pressure))
+    guard prevPressureStage < 2 else { return }
+    prevPressureStage = event.stage
+    guard event.stage == 2 else { return }
+    guard UserDefaults.standard.bool(forKey: "com.apple.trackpad.forceClick") else { return }
+    quickLook(with: event)
+  }
+
+  override func quickLook(with event: NSEvent) {
+    guard let surface else { return super.quickLook(with: event) }
+    var text = ghostty_text_s()
+    guard ghostty_surface_quicklook_word(surface, &text) else { return super.quickLook(with: event) }
+    defer { ghostty_surface_free_text(surface, &text) }
+    guard text.text_len > 0 else { return super.quickLook(with: event) }
+
+    var attributes: [NSAttributedString.Key: Any] = [:]
+    if let fontRaw = ghostty_surface_quicklook_font(surface) {
+      let font = Unmanaged<CTFont>.fromOpaque(fontRaw)
+      attributes[.font] = font.takeUnretainedValue()
+      font.release()
+    }
+
+    let pt = NSPoint(x: text.tl_px_x, y: frame.size.height - text.tl_px_y)
+    let str = NSAttributedString(string: String(cString: text.text), attributes: attributes)
+    showDefinition(for: str, at: pt)
   }
 
   private func localEventHandler(_ event: NSEvent) -> NSEvent? {

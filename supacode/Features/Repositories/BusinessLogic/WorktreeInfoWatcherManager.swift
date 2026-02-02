@@ -197,6 +197,7 @@ final class WorktreeInfoWatcherManager {
       return
     }
     configureWatcher(for: worktree)
+    scheduleBranchChanged(worktreeID: worktreeID)
   }
 
   private func stopHeadWatcher(for worktreeID: Worktree.ID) {

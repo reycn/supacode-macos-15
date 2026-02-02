@@ -29,19 +29,25 @@ final class GhosttyFontManager {
     }
   }
 
-  func font(for style: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
-    if let familyName {
-      let size = preferredSize(for: style)
-      return .custom(familyName, size: size).weight(weight)
+  func font(for style: Font.TextStyle, weight: Font.Weight? = nil) -> Font {
+    let size = preferredSize(for: style)
+    if familyName != nil {
+      let nsWeight = weight.map(nsWeight(for:)) ?? preferredWeight(for: style)
+      return Font(nsFont(size: size, weight: nsWeight))
     }
-    return .system(style, design: .monospaced).weight(weight)
+    if let weight {
+      return .system(style, design: .monospaced).weight(weight)
+    }
+    return .system(style, design: .monospaced)
   }
 
-  func font(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-    if let familyName {
-      return .custom(familyName, size: size).weight(weight)
+  func font(size: CGFloat, weight: Font.Weight? = nil) -> Font {
+    if familyName != nil {
+      let nsWeight = weight.map(nsWeight(for:)) ?? .regular
+      return Font(nsFont(size: size, weight: nsWeight))
     }
-    return .system(size: size, weight: weight, design: .monospaced)
+    let resolvedWeight = weight ?? .regular
+    return .system(size: size, weight: resolvedWeight, design: .monospaced)
   }
 
   func nsFont(size: CGFloat, weight: NSFont.Weight) -> NSFont {
@@ -79,6 +85,38 @@ final class GhosttyFontManager {
 
   private func preferredSize(for style: Font.TextStyle) -> CGFloat {
     NSFont.preferredFont(forTextStyle: nsTextStyle(for: style)).pointSize
+  }
+
+  private func preferredWeight(for style: Font.TextStyle) -> NSFont.Weight {
+    let font = NSFont.preferredFont(forTextStyle: nsTextStyle(for: style))
+    let traits = font.fontDescriptor.object(forKey: .traits) as? [NSFontDescriptor.TraitKey: Any]
+    let weight = traits?[.weight] as? CGFloat
+    return NSFont.Weight(weight ?? NSFont.Weight.regular.rawValue)
+  }
+
+  private func nsWeight(for weight: Font.Weight) -> NSFont.Weight {
+    switch weight {
+    case .ultraLight:
+      return .ultraLight
+    case .thin:
+      return .thin
+    case .light:
+      return .light
+    case .regular:
+      return .regular
+    case .medium:
+      return .medium
+    case .semibold:
+      return .semibold
+    case .bold:
+      return .bold
+    case .heavy:
+      return .heavy
+    case .black:
+      return .black
+    default:
+      return .regular
+    }
   }
 
   private func nsTextStyle(for style: Font.TextStyle) -> NSFont.TextStyle {

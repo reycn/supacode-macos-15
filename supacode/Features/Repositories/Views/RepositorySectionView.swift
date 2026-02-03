@@ -93,6 +93,7 @@ struct RepositorySectionView: View {
         .help("Remove repository ")
         .disabled(isRemovingRepository)
       }
+      .contentShape(.dragPreview, .rect)
       .listRowInsets(EdgeInsets())
     }
   }

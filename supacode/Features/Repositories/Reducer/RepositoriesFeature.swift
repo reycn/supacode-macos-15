@@ -670,7 +670,9 @@ struct RepositoriesFeature {
       case .repositoriesMoved(let offsets, let destination):
         var ordered = state.orderedRepositoryIDs()
         ordered.move(fromOffsets: offsets, toOffset: destination)
-        state.repositoryOrderIDs = ordered
+        withAnimation(.snappy(duration: 0.2)) {
+          state.repositoryOrderIDs = ordered
+        }
         let repositoryOrderIDs = state.repositoryOrderIDs
         return .run { _ in
           await repositoryPersistence.saveRepositoryOrderIDs(repositoryOrderIDs)
@@ -682,10 +684,12 @@ struct RepositoriesFeature {
         guard currentPinned.count > 1 else { return .none }
         var reordered = currentPinned
         reordered.move(fromOffsets: offsets, toOffset: destination)
-        state.pinnedWorktreeIDs = state.replacingPinnedWorktreeIDs(
-          in: repository,
-          with: reordered
-        )
+        withAnimation(.snappy(duration: 0.2)) {
+          state.pinnedWorktreeIDs = state.replacingPinnedWorktreeIDs(
+            in: repository,
+            with: reordered
+          )
+        }
         let pinnedWorktreeIDs = state.pinnedWorktreeIDs
         return .run { _ in
           await repositoryPersistence.savePinnedWorktreeIDs(pinnedWorktreeIDs)
@@ -697,7 +701,9 @@ struct RepositoriesFeature {
         guard currentUnpinned.count > 1 else { return .none }
         var reordered = currentUnpinned
         reordered.move(fromOffsets: offsets, toOffset: destination)
-        state.worktreeOrderByRepository[repositoryID] = reordered
+        withAnimation(.snappy(duration: 0.2)) {
+          state.worktreeOrderByRepository[repositoryID] = reordered
+        }
         let worktreeOrderByRepository = state.worktreeOrderByRepository
         return .run { _ in
           await repositoryPersistence.saveWorktreeOrderByRepository(worktreeOrderByRepository)

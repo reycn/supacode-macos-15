@@ -32,6 +32,7 @@ struct AppFeature {
     ) {
       self.repositories = repositories
       self.settings = settings
+      commandPalette.items = commandPaletteItems(from: repositories)
     }
   }
 
@@ -70,6 +71,8 @@ struct AppFeature {
   @Dependency(\.analyticsClient) private var analyticsClient
   @Dependency(\.repositoryPersistence) private var repositoryPersistence
   @Dependency(\.workspaceClient) private var workspaceClient
+  @Dependency(\.settingsWindowClient) private var settingsWindowClient
+  @Dependency(\.editorActionResolver) private var editorActionResolver
   @Dependency(\.terminalClient) private var terminalClient
   @Dependency(\.worktreeInfoWatcher) private var worktreeInfoWatcher
 
@@ -141,10 +144,12 @@ struct AppFeature {
         let ids = Set(repositories.flatMap { $0.worktrees.map(\.id) })
         let worktrees = repositories.flatMap(\.worktrees)
         state.runScriptStatusByWorktreeID = state.runScriptStatusByWorktreeID.filter { ids.contains($0.key) }
+        let paletteItems = commandPaletteItems(from: state.repositories)
         if case .repository(let repositoryID)? = state.settings.selection,
           !repositories.contains(where: { $0.id == repositoryID })
         {
           return .merge(
+            .send(.commandPalette(.setItems(paletteItems))),
             .send(.settings(.setSelection(.general))),
             .run { _ in
               await terminalClient.send(.prune(ids))
@@ -155,6 +160,7 @@ struct AppFeature {
           )
         }
         return .merge(
+          .send(.commandPalette(.setItems(paletteItems))),
           .run { _ in
             await terminalClient.send(.prune(ids))
           },
@@ -171,9 +177,7 @@ struct AppFeature {
         return .merge(
           .send(.settings(.setSelection(selection))),
           .run { _ in
-            await MainActor.run {
-              SettingsWindowManager.shared.show()
-            }
+            await settingsWindowClient.show()
           }
         )
 
@@ -443,6 +447,64 @@ struct AppFeature {
       case .commandPalette(.delegate(.selectWorktree(let worktreeID))):
         return .send(.repositories(.selectWorktree(worktreeID)))
 
+      case .commandPalette(.delegate(.openSettings)):
+        return .merge(
+          .send(.settings(.setSelection(.general))),
+          .run { _ in
+            await settingsWindowClient.show()
+          }
+        )
+
+      case .commandPalette(.delegate(.newWorktree)):
+        return .send(.repositories(.createRandomWorktree))
+
+      case .commandPalette(.delegate(.removeWorktree(let worktreeID, let repositoryID))):
+        return .send(.repositories(.requestRemoveWorktree(worktreeID, repositoryID)))
+
+      case .commandPalette(.delegate(.runWorktree(let worktreeID))):
+        guard let worktree = state.repositories.worktree(for: worktreeID) else {
+          return .none
+        }
+        let rootURL = worktree.repositoryRootURL
+        @Shared(.repositorySettings(rootURL)) var repositorySettings
+        let script = repositorySettings.runScript
+        let trimmed = script.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+          state.alert = AlertState {
+            TextState("No Run Script Configured")
+          } actions: {
+            ButtonState(role: .cancel, action: .dismiss) {
+              TextState("OK")
+            }
+          } message: {
+            TextState("Configure a run script in Repository Settings.")
+          }
+          return .none
+        }
+        analyticsClient.capture("script_run", nil)
+        return .merge(
+          .send(.repositories(.selectWorktree(worktreeID))),
+          .run { _ in
+            await terminalClient.send(.runScript(worktree, script: script))
+          }
+        )
+
+      case .commandPalette(.delegate(.openWorktreeInEditor(let worktreeID))):
+        guard let worktree = state.repositories.worktree(for: worktreeID) else {
+          return .none
+        }
+        let editorActionResolver = editorActionResolver
+        let workspaceClient = workspaceClient
+        return .merge(
+          .send(.repositories(.selectWorktree(worktreeID))),
+          .run { send in
+            let action = await editorActionResolver.resolve()
+            await workspaceClient.open(action, worktree) { error in
+              send(.openWorktreeFailed(error))
+            }
+          }
+        )
+
       case .commandPalette:
         return .none
 
@@ -507,6 +569,74 @@ struct AppFeature {
       CommandPaletteFeature()
     }
   }
+}
+
+private func commandPaletteItems(
+  from repositories: RepositoriesFeature.State
+) -> [CommandPaletteItem] {
+  var items: [CommandPaletteItem] = [
+    CommandPaletteItem(
+      id: "global.open-settings",
+      title: "Open Settings",
+      subtitle: nil,
+      kind: .openSettings
+    ),
+    CommandPaletteItem(
+      id: "global.new-worktree",
+      title: "New Worktree",
+      subtitle: nil,
+      kind: .newWorktree
+    ),
+  ]
+  for row in repositories.orderedWorktreeRows() {
+    guard !row.isPending, !row.isDeleting else { continue }
+    let repositoryName = repositories.repositoryName(for: row.repositoryID) ?? "Repository"
+    let title = "\(repositoryName) / \(row.name)"
+    let trimmedDetail = row.detail.trimmingCharacters(in: .whitespacesAndNewlines)
+    let detail = trimmedDetail.isEmpty ? nil : trimmedDetail
+    items.append(
+      CommandPaletteItem(
+        id: "worktree.\(row.id).select",
+        title: title,
+        subtitle: detail,
+        kind: .worktreeSelect(row.id)
+      )
+    )
+    items.append(
+      CommandPaletteItem(
+        id: "worktree.\(row.id).run",
+        title: title,
+        subtitle: actionSubtitle(action: "Run", detail: detail),
+        kind: .runWorktree(row.id)
+      )
+    )
+    items.append(
+      CommandPaletteItem(
+        id: "worktree.\(row.id).editor",
+        title: title,
+        subtitle: actionSubtitle(action: "Open in Editor", detail: detail),
+        kind: .openWorktreeInEditor(row.id)
+      )
+    )
+    if row.isRemovable, !row.isMainWorktree {
+      items.append(
+        CommandPaletteItem(
+          id: "worktree.\(row.id).remove",
+          title: title,
+          subtitle: actionSubtitle(action: "Remove Worktree", detail: detail),
+          kind: .removeWorktree(row.id, row.repositoryID)
+        )
+      )
+    }
+  }
+  return items
+}
+
+private func actionSubtitle(action: String, detail: String?) -> String? {
+  if let detail, !detail.isEmpty {
+    return "\(action) - \(detail)"
+  }
+  return action
 }
 
 private struct ActionLabelReducer<Base: Reducer>: Reducer {

@@ -68,8 +68,7 @@ struct ContentView: View {
     .focusedSceneValue(\.toggleLeftSidebarAction, toggleLeftSidebar)
     .overlay {
       CommandPaletteOverlayView(
-        store: store.scope(state: \.commandPalette, action: \.commandPalette),
-        rows: commandPaletteRows(from: store.repositories)
+        store: store.scope(state: \.commandPalette, action: \.commandPalette)
       )
     }
     .background(WindowTabbingDisabler())
@@ -81,16 +80,4 @@ struct ContentView: View {
     }
   }
 
-  private func commandPaletteRows(
-    from repositories: RepositoriesFeature.State
-  ) -> [CommandPaletteWorktreeRow] {
-    repositories.orderedWorktreeRows().compactMap { row in
-      guard !row.isPending, !row.isDeleting else { return nil }
-      let repositoryName = repositories.repositoryName(for: row.repositoryID) ?? "Repository"
-      let title = "\(repositoryName) / \(row.name)"
-      let trimmedDetail = row.detail.trimmingCharacters(in: .whitespacesAndNewlines)
-      let subtitle = trimmedDetail.isEmpty ? nil : trimmedDetail
-      return CommandPaletteWorktreeRow(id: row.id, title: title, subtitle: subtitle)
-    }
-  }
 }

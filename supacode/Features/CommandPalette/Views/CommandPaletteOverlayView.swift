@@ -5,9 +5,8 @@ private typealias MoveDirection = CommandPaletteFeature.MoveDirection
 
 struct CommandPaletteOverlayView: View {
   @Bindable var store: StoreOf<CommandPaletteFeature>
-  let rows: [CommandPaletteWorktreeRow]
   @FocusState private var isQueryFocused: Bool
-  @State private var hoveredID: Worktree.ID?
+  @State private var hoveredID: CommandPaletteItem.ID?
 
   var body: some View {
     if store.isPresented {
@@ -25,15 +24,26 @@ struct CommandPaletteOverlayView: View {
         CommandPaletteCard(
           query: $store.query,
           selectedIndex: $store.selectedIndex,
-          rows: rows,
+          items: store.filteredItems,
           hoveredID: $hoveredID,
           isQueryFocused: $isQueryFocused,
-          dismiss: {
-            store.send(.setPresented(false))
+          onEvent: { event in
+            switch event {
+            case .exit:
+              store.send(.setPresented(false))
+            case .submit:
+              store.send(.submitSelected)
+            case .move(let direction):
+              store.send(.moveSelection(direction))
+            }
+          },
+          activateShortcut: { index in
+            store.send(.activateShortcut(index))
+          },
+          activate: { id in
+            store.send(.activateItem(id))
           }
-        ) { id in
-          store.send(.activateWorktree(id))
-        }
+        )
         .padding()
       }
       .ignoresSafeArea()
@@ -53,59 +63,27 @@ struct CommandPaletteOverlayView: View {
 private struct CommandPaletteCard: View {
   @Binding var query: String
   @Binding var selectedIndex: Int?
-  let rows: [CommandPaletteWorktreeRow]
-  @Binding var hoveredID: Worktree.ID?
+  let items: [CommandPaletteItem]
+  @Binding var hoveredID: CommandPaletteItem.ID?
   @FocusState.Binding var isQueryFocused: Bool
-  let dismiss: () -> Void
-  let activate: (Worktree.ID) -> Void
-
-  private var filteredRows: [CommandPaletteWorktreeRow] {
-    let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmedQuery.isEmpty else { return rows }
-    return rows.filter { $0.title.localizedStandardContains(trimmedQuery) }
-  }
+  let onEvent: (CommandPaletteKeyboardEvent) -> Void
+  let activateShortcut: (Int) -> Void
+  let activate: (CommandPaletteItem.ID) -> Void
 
   var body: some View {
-    let filteredRows = filteredRows
     VStack {
       CommandPaletteQueryField(query: $query, isQueryFocused: _isQueryFocused) { event in
-        switch event {
-        case .exit:
-          dismiss()
-
-        case .submit:
-          activateSelected(in: filteredRows)
-
-        case .move(let direction):
-          moveSelection(direction, count: filteredRows.count)
-        }
-      }
-      .onChange(of: query) { _, newValue in
-        if newValue.isEmpty {
-          if selectedIndex == 0 {
-            selectedIndex = nil
-          }
-        } else if selectedIndex == nil, !filteredRows.isEmpty {
-          selectedIndex = 0
-        }
-      }
-      .onChange(of: filteredRows.count) { _, newValue in
-        if newValue == 0 {
-          selectedIndex = nil
-        } else if let selectedIndex, selectedIndex >= newValue {
-          self.selectedIndex = newValue - 1
-        }
+        onEvent(event)
       }
 
       Divider()
 
-      CommandPaletteShortcutHandler(count: min(5, filteredRows.count)) { index in
-        guard filteredRows.indices.contains(index) else { return }
-        activate(filteredRows[index].id)
+      CommandPaletteShortcutHandler(count: min(5, items.count)) { index in
+        activateShortcut(index)
       }
 
       CommandPaletteList(
-        rows: filteredRows,
+        rows: items,
         selectedIndex: $selectedIndex,
         hoveredID: $hoveredID
       ) { id in
@@ -121,38 +99,6 @@ private struct CommandPaletteCard: View {
     )
     .shadow(radius: 24)
   }
-
-  private func moveSelection(_ direction: MoveDirection, count: Int) {
-    guard count > 0 else {
-      selectedIndex = nil
-      return
-    }
-    let maxIndex = count - 1
-    switch direction {
-    case .up:
-      if let selectedIndex {
-        self.selectedIndex = selectedIndex == 0 ? maxIndex : selectedIndex - 1
-      } else {
-        selectedIndex = maxIndex
-      }
-    case .down:
-      if let selectedIndex {
-        self.selectedIndex = selectedIndex == maxIndex ? 0 : selectedIndex + 1
-      } else {
-        selectedIndex = 0
-      }
-    }
-  }
-
-  private func activateSelected(in rows: [CommandPaletteWorktreeRow]) {
-    guard let selectedIndex else { return }
-    if rows.indices.contains(selectedIndex) {
-      activate(rows[selectedIndex].id)
-    } else if let last = rows.last {
-      activate(last.id)
-    }
-  }
-
 }
 
 private struct CommandPaletteQueryField: View {
@@ -160,15 +106,9 @@ private struct CommandPaletteQueryField: View {
   @FocusState.Binding var isQueryFocused: Bool
   var onEvent: (CommandPaletteKeyboardEvent) -> Void
 
-  enum CommandPaletteKeyboardEvent: Equatable {
-    case exit
-    case submit
-    case move(MoveDirection)
-  }
-
   var body: some View {
     ZStack {
-      TextField("Search worktrees...", text: $query)
+      TextField("Search...", text: $query)
         .textFieldStyle(.plain)
         .padding()
         .font(.title3)
@@ -189,11 +129,17 @@ private struct CommandPaletteQueryField: View {
   }
 }
 
+private enum CommandPaletteKeyboardEvent: Equatable {
+  case exit
+  case submit
+  case move(MoveDirection)
+}
+
 private struct CommandPaletteList: View {
-  let rows: [CommandPaletteWorktreeRow]
+  let rows: [CommandPaletteItem]
   @Binding var selectedIndex: Int?
-  @Binding var hoveredID: Worktree.ID?
-  let activate: (Worktree.ID) -> Void
+  @Binding var hoveredID: CommandPaletteItem.ID?
+  let activate: (CommandPaletteItem.ID) -> Void
 
   var body: some View {
     if rows.isEmpty {
@@ -238,10 +184,10 @@ private struct CommandPaletteList: View {
 }
 
 private struct CommandPaletteRowView: View {
-  let row: CommandPaletteWorktreeRow
+  let row: CommandPaletteItem
   let shortcutIndex: Int?
   let isSelected: Bool
-  @Binding var hoveredID: Worktree.ID?
+  @Binding var hoveredID: CommandPaletteItem.ID?
   let activate: () -> Void
 
   var body: some View {
@@ -291,10 +237,25 @@ private struct CommandPaletteRowView: View {
   }
 
   private var helpText: String {
-    if let shortcutIndex {
-      return "Switch to \(row.title) (\(commandPaletteShortcutDisplay(for: shortcutIndex)))"
+    let base: String
+    switch row.kind {
+    case .worktreeSelect:
+      base = "Switch to \(row.title)"
+    case .openSettings:
+      base = "Open Settings"
+    case .newWorktree:
+      base = "New Worktree"
+    case .removeWorktree:
+      base = "Remove \(row.title)"
+    case .runWorktree:
+      base = "Run \(row.title)"
+    case .openWorktreeInEditor:
+      base = "Open \(row.title) in Editor"
     }
-    return "Switch to \(row.title)"
+    if let shortcutIndex {
+      return "\(base) (\(commandPaletteShortcutDisplay(for: shortcutIndex)))"
+    }
+    return base
   }
 }
 

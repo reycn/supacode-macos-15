@@ -9,6 +9,7 @@ final class WorktreeTerminalManager {
   private var notificationsEnabled = true
   private var lastNotificationIndicatorCount: Int?
   private var eventContinuation: AsyncStream<TerminalClient.Event>.Continuation?
+  private var pendingEvents: [TerminalClient.Event] = []
   var selectedWorktreeID: Worktree.ID?
 
   init(runtime: GhosttyRuntime) {
@@ -57,6 +58,12 @@ final class WorktreeTerminalManager {
     eventContinuation = continuation
     lastNotificationIndicatorCount = nil
     emitNotificationIndicatorCountIfNeeded()
+    if !pendingEvents.isEmpty {
+      for event in pendingEvents {
+        continuation.yield(event)
+      }
+      pendingEvents.removeAll()
+    }
     return stream
   }
 
@@ -174,7 +181,11 @@ final class WorktreeTerminalManager {
   }
 
   private func emit(_ event: TerminalClient.Event) {
-    eventContinuation?.yield(event)
+    guard let eventContinuation else {
+      pendingEvents.append(event)
+      return
+    }
+    eventContinuation.yield(event)
   }
 
   private func emitNotificationIndicatorCountIfNeeded() {

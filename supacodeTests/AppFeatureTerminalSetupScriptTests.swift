@@ -131,7 +131,7 @@ struct AppFeatureTerminalSetupScriptTests {
     await store.finish()
     #expect(
       sent.value == [
-        .ensureInitialTab(worktree, runSetupScriptIfNew: true, focusing: false),
+        .ensureInitialTab(worktree, runSetupScriptIfNew: true, focusing: false)
       ]
     )
   }
@@ -161,7 +161,7 @@ struct AppFeatureTerminalSetupScriptTests {
     await store.finish()
     #expect(
       sent.value == [
-        .ensureInitialTab(worktree, runSetupScriptIfNew: false, focusing: false),
+        .ensureInitialTab(worktree, runSetupScriptIfNew: false, focusing: false)
       ]
     )
   }

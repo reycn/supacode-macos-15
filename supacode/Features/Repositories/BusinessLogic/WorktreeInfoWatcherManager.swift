@@ -19,6 +19,7 @@ final class WorktreeInfoWatcherManager {
     let unfocused: Duration
   }
 
+  private let filesChangedDebounceInterval: Duration
   private let refreshTiming: RefreshTiming
   private var worktrees: [Worktree.ID: Worktree] = [:]
   private var headWatchers: [Worktree.ID: HeadWatcher] = [:]
@@ -34,9 +35,11 @@ final class WorktreeInfoWatcherManager {
 
   init(
     focusedInterval: Duration = .seconds(30),
-    unfocusedInterval: Duration = .seconds(60)
+    unfocusedInterval: Duration = .seconds(60),
+    filesChangedDebounceInterval: Duration = .seconds(5)
   ) {
     refreshTiming = RefreshTiming(focused: focusedInterval, unfocused: unfocusedInterval)
+    self.filesChangedDebounceInterval = filesChangedDebounceInterval
   }
 
   func handleCommand(_ command: WorktreeInfoWatcherClient.Command) {
@@ -188,10 +191,19 @@ final class WorktreeInfoWatcherManager {
 
   private func scheduleFilesChanged(worktreeID: Worktree.ID) {
     filesDebounceTasks[worktreeID]?.cancel()
+    let debounceInterval = filesChangedDebounceInterval
     let task = Task { [weak self] in
-      try? await Task.sleep(for: .seconds(5))
+      try? await Task.sleep(for: debounceInterval)
       await MainActor.run {
-        self?.emit(.filesChanged(worktreeID: worktreeID))
+        guard let self else { return }
+        self.emit(.filesChanged(worktreeID: worktreeID))
+        if !self.deferredLineChangeIDs.contains(worktreeID) {
+          self.updateLineChangeSchedule(
+            worktreeID: worktreeID,
+            immediate: false,
+            forceReschedule: true
+          )
+        }
       }
     }
     filesDebounceTasks[worktreeID] = task
@@ -332,7 +344,11 @@ final class WorktreeInfoWatcherManager {
     emit(.repositoryPullRequestRefresh(repositoryRootURL: repositoryRootURL, worktreeIDs: worktreeIDs))
   }
 
-  private func updateLineChangeSchedule(worktreeID: Worktree.ID, immediate: Bool) {
+  private func updateLineChangeSchedule(
+    worktreeID: Worktree.ID,
+    immediate: Bool,
+    forceReschedule: Bool = false
+  ) {
     guard worktrees[worktreeID] != nil else {
       return
     }
@@ -342,6 +358,7 @@ final class WorktreeInfoWatcherManager {
       worktreeID: worktreeID,
       interval: interval,
       immediate: shouldEmit,
+      forceReschedule: forceReschedule,
       tasks: &lineChangeTasks
     ) { [weak self] worktreeID in
       self?.deferredLineChangeIDs.remove(worktreeID)
@@ -353,10 +370,11 @@ final class WorktreeInfoWatcherManager {
     worktreeID: Worktree.ID,
     interval: Duration,
     immediate: Bool,
+    forceReschedule: Bool,
     tasks: inout [Worktree.ID: RefreshTask],
     makeEvent: @escaping (Worktree.ID) -> WorktreeInfoWatcherClient.Event
   ) {
-    if let existing = tasks[worktreeID], existing.interval == interval {
+    if let existing = tasks[worktreeID], existing.interval == interval, !forceReschedule {
       if immediate {
         emit(makeEvent(worktreeID))
       }

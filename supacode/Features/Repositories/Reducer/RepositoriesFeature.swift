@@ -199,6 +199,8 @@ struct RepositoriesFeature {
       case .repositoriesLoaded(let repositories, let failures, let roots, let animated):
         let previousSelection = state.selectedWorktreeID
         let previousSelectedWorktree = state.worktree(for: previousSelection)
+        let incomingRepositories = IdentifiedArray(uniqueElements: repositories)
+        let repositoriesChanged = incomingRepositories != state.repositories
         let applyResult = applyRepositories(
           repositories,
           roots: roots,
@@ -212,9 +214,10 @@ struct RepositoriesFeature {
         )
         let selectedWorktree = state.worktree(for: state.selectedWorktreeID)
         let selectionChanged = previousSelectedWorktree != selectedWorktree
-        var allEffects: [Effect<Action>] = [
-          .send(.delegate(.repositoriesChanged(state.repositories)))
-        ]
+        var allEffects: [Effect<Action>] = []
+        if repositoriesChanged {
+          allEffects.append(.send(.delegate(.repositoriesChanged(state.repositories))))
+        }
         if selectionChanged {
           allEffects.append(.send(.delegate(.selectedWorktreeChanged(selectedWorktree))))
         }
@@ -1210,39 +1213,57 @@ extension RepositoriesFeature.State {
     pendingTerminalFocusWorktreeIDs.contains(worktreeID)
   }
 
+  private func makePendingWorktreeRow(_ pending: PendingWorktree) -> WorktreeRowModel {
+    let isDeleting = removingRepositoryIDs.contains(pending.repositoryID)
+    return WorktreeRowModel(
+      id: pending.id,
+      repositoryID: pending.repositoryID,
+      name: pending.name,
+      detail: pending.detail,
+      info: worktreeInfo(for: pending.id),
+      isPinned: false,
+      isMainWorktree: false,
+      isPending: true,
+      isDeleting: isDeleting,
+      isRemovable: false
+    )
+  }
+
+  private func makeWorktreeRow(
+    _ worktree: Worktree,
+    repositoryID: Repository.ID,
+    isPinned: Bool,
+    isMainWorktree: Bool
+  ) -> WorktreeRowModel {
+    let isDeleting =
+      removingRepositoryIDs.contains(repositoryID)
+      || deletingWorktreeIDs.contains(worktree.id)
+    return WorktreeRowModel(
+      id: worktree.id,
+      repositoryID: repositoryID,
+      name: worktree.name,
+      detail: worktree.detail,
+      info: worktreeInfo(for: worktree.id),
+      isPinned: isPinned,
+      isMainWorktree: isMainWorktree,
+      isPending: false,
+      isDeleting: isDeleting,
+      isRemovable: !isDeleting
+    )
+  }
+
   func selectedRow(for id: Worktree.ID?) -> WorktreeRowModel? {
     guard let id else { return nil }
     if let pending = pendingWorktree(for: id) {
-      let isDeleting = removingRepositoryIDs.contains(pending.repositoryID)
-      return WorktreeRowModel(
-        id: pending.id,
-        repositoryID: pending.repositoryID,
-        name: pending.name,
-        detail: pending.detail,
-        info: worktreeInfo(for: pending.id),
-        isPinned: false,
-        isMainWorktree: false,
-        isPending: true,
-        isDeleting: isDeleting,
-        isRemovable: false
-      )
+      return makePendingWorktreeRow(pending)
     }
     for repository in repositories {
       if let worktree = repository.worktrees[id: id] {
-        let isDeleting =
-          removingRepositoryIDs.contains(repository.id)
-          || deletingWorktreeIDs.contains(worktree.id)
-        return WorktreeRowModel(
-          id: worktree.id,
+        return makeWorktreeRow(
+          worktree,
           repositoryID: repository.id,
-          name: worktree.name,
-          detail: worktree.detail,
-          info: worktreeInfo(for: worktree.id),
           isPinned: pinnedWorktreeIDs.contains(worktree.id),
-          isMainWorktree: isMainWorktree(worktree),
-          isPending: false,
-          isDeleting: isDeleting,
-          isRemovable: !isDeleting
+          isMainWorktree: isMainWorktree(worktree)
         )
       }
     }
@@ -1405,76 +1426,41 @@ extension RepositoriesFeature.State {
   }
 
   func worktreeRowSections(in repository: Repository) -> WorktreeRowSections {
-    let isRemovingRepository = removingRepositoryIDs.contains(repository.id)
     let mainWorktree = repository.worktrees.first(where: { isMainWorktree($0) })
     let pinnedWorktrees = orderedPinnedWorktrees(in: repository)
     let unpinnedWorktrees = orderedUnpinnedWorktrees(in: repository)
     let pendingEntries = pendingWorktrees.filter { $0.repositoryID == repository.id }
     let mainRow: WorktreeRowModel? = mainWorktree.map { mainWorktree in
-      let isDeleting = isRemovingRepository || deletingWorktreeIDs.contains(mainWorktree.id)
-      return WorktreeRowModel(
-        id: mainWorktree.id,
+      return makeWorktreeRow(
+        mainWorktree,
         repositoryID: repository.id,
-        name: mainWorktree.name,
-        detail: mainWorktree.detail,
-        info: worktreeInfo(for: mainWorktree.id),
         isPinned: false,
-        isMainWorktree: true,
-        isPending: false,
-        isDeleting: isDeleting,
-        isRemovable: !isDeleting
+        isMainWorktree: true
       )
     }
     var pinnedRows: [WorktreeRowModel] = []
     for worktree in pinnedWorktrees {
-      let isDeleting = isRemovingRepository || deletingWorktreeIDs.contains(worktree.id)
       pinnedRows.append(
-        WorktreeRowModel(
-          id: worktree.id,
+        makeWorktreeRow(
+          worktree,
           repositoryID: repository.id,
-          name: worktree.name,
-          detail: worktree.detail,
-          info: worktreeInfo(for: worktree.id),
           isPinned: true,
-          isMainWorktree: false,
-          isPending: false,
-          isDeleting: isDeleting,
-          isRemovable: !isDeleting
+          isMainWorktree: false
         )
       )
     }
     var pendingRows: [WorktreeRowModel] = []
     for pending in pendingEntries {
-      pendingRows.append(
-        WorktreeRowModel(
-          id: pending.id,
-          repositoryID: pending.repositoryID,
-          name: pending.name,
-          detail: pending.detail,
-          info: worktreeInfo(for: pending.id),
-          isPinned: false,
-          isMainWorktree: false,
-          isPending: true,
-          isDeleting: isRemovingRepository,
-          isRemovable: false
-        )
-      )
+      pendingRows.append(makePendingWorktreeRow(pending))
     }
     var unpinnedRows: [WorktreeRowModel] = []
     for worktree in unpinnedWorktrees {
-      let isDeleting = isRemovingRepository || deletingWorktreeIDs.contains(worktree.id)
       unpinnedRows.append(
-        WorktreeRowModel(
-          id: worktree.id,
+        makeWorktreeRow(
+          worktree,
           repositoryID: repository.id,
-          name: worktree.name,
-          detail: worktree.detail,
-          info: worktreeInfo(for: worktree.id),
           isPinned: false,
-          isMainWorktree: false,
-          isPending: false,
-          isDeleting: isDeleting,
-          isRemovable: !isDeleting
+          isMainWorktree: false
         )
       )
     }

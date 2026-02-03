@@ -154,7 +154,14 @@ struct CommandPaletteFeature {
     let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
     let globalItems = items.filter(\.isGlobal)
     guard !trimmed.isEmpty else { return globalItems }
-    let worktreeItems = items.filter { !$0.isGlobal }
+    let worktreeItems = items.filter {
+      switch $0.kind {
+      case .worktreeSelect:
+        return true
+      case .openSettings, .newWorktree, .removeWorktree, .runWorktree, .openWorktreeInEditor:
+        return false
+      }
+    }
     let matcher: (CommandPaletteItem) -> Bool = { $0.matches(query: trimmed) }
     return globalItems.filter(matcher) + worktreeItems.filter(matcher)
   }

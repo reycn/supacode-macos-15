@@ -19,6 +19,9 @@ final class WorktreeTerminalManager {
     switch command {
     case .createTab(let worktree, let runSetupScriptIfNew):
       Task { createTabAsync(in: worktree, runSetupScriptIfNew: runSetupScriptIfNew) }
+    case .ensureInitialTab(let worktree, let runSetupScriptIfNew, let focusing):
+      let state = state(for: worktree) { runSetupScriptIfNew }
+      state.ensureInitialTab(focusing: focusing)
     case .runScript(let worktree, let script):
       _ = state(for: worktree).runScript(script)
     case .stopRunScript(let worktree):

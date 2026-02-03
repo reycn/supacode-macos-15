@@ -18,6 +18,7 @@ final class WorktreeTerminalState {
   private var tabIsRunningById: [TerminalTabID: Bool] = [:]
   private var runScriptTabId: TerminalTabID?
   private var pendingSetupScript: Bool
+  private var isEnsuringInitialTab = false
   private var lastReportedTaskStatus: WorktreeTaskStatus?
   private var lastEmittedFocusSurfaceId: UUID?
   var notifications: [WorktreeTerminalNotification] = []
@@ -56,17 +57,21 @@ final class WorktreeTerminalState {
   }
 
   func ensureInitialTab(focusing: Bool) {
-    if tabManager.tabs.isEmpty {
-      Task {
-        let setupScript: String?
-        if pendingSetupScript {
-          setupScript = repositorySettings.setupScript
-        } else {
-          setupScript = nil
-        }
-        await MainActor.run {
+    guard tabManager.tabs.isEmpty else { return }
+    guard !isEnsuringInitialTab else { return }
+    isEnsuringInitialTab = true
+    Task {
+      let setupScript: String?
+      if pendingSetupScript {
+        setupScript = repositorySettings.setupScript
+      } else {
+        setupScript = nil
+      }
+      await MainActor.run {
+        if tabManager.tabs.isEmpty {
           _ = createTab(focusing: focusing, setupScript: setupScript)
         }
+        isEnsuringInitialTab = false
       }
     }
   }

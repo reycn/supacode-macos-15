@@ -135,6 +135,19 @@ struct AppFeature {
           .send(.worktreeSettingsLoaded(settings, worktreeID: worktreeID))
         )
 
+      case .repositories(.delegate(.worktreeCreated(let worktree))):
+        let shouldRunSetupScript =
+          state.repositories.pendingSetupScriptWorktreeIDs.contains(worktree.id)
+        return .run { _ in
+          await terminalClient.send(
+            .ensureInitialTab(
+              worktree,
+              runSetupScriptIfNew: shouldRunSetupScript,
+              focusing: false
+            )
+          )
+        }
+
       case .repositories(.delegate(.repositoriesChanged(let repositories))):
         let ids = Set(repositories.flatMap { $0.worktrees.map(\.id) })
         let worktrees = repositories.flatMap(\.worktrees)
@@ -470,6 +483,12 @@ struct AppFeature {
           state.runScriptStatusByWorktreeID.removeValue(forKey: worktreeID)
         }
         return .none
+
+      case .terminalEvent(.tabCreated(let worktreeID)):
+        guard state.repositories.pendingSetupScriptWorktreeIDs.contains(worktreeID) else {
+          return .none
+        }
+        return .send(.repositories(.consumeSetupScript(worktreeID)))
 
       case .terminalEvent:
         return .none

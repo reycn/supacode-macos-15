@@ -29,10 +29,8 @@ struct SidebarListView: View {
     let orderedRoots = state.orderedRepositoryRoots()
     let repositoriesByID = Dictionary(uniqueKeysWithValues: store.repositories.map { ($0.id, $0) })
     List(selection: selection) {
-      Section {
-        Label("Archived Worktrees", systemImage: "archivebox")
-          .tag(SidebarSelection.archivedWorktrees)
-      }
+      Label("Archived Worktrees", systemImage: "archivebox")
+        .tag(SidebarSelection.archivedWorktrees)
       if orderedRoots.isEmpty {
         ForEach(store.repositories) { repository in
           RepositorySectionView(
@@ -47,11 +45,9 @@ struct SidebarListView: View {
           let repositoryID = rootURL.standardizedFileURL.path(percentEncoded: false)
           if let failureMessage = state.loadFailuresByID[repositoryID] {
             let name = Repository.name(for: rootURL.standardizedFileURL)
-            let initials = Repository.initials(from: name)
             let path = rootURL.standardizedFileURL.path(percentEncoded: false)
             FailedRepositoryRow(
               name: name,
-              initials: initials,
               path: path,
               showFailure: {
                 let message = "\(path)\n\n\(failureMessage)"

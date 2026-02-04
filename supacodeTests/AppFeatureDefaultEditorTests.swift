@@ -10,22 +10,32 @@ struct AppFeatureDefaultEditorTests {
   @Test(.dependencies) func defaultEditorAppliesToAutomaticRepositorySettings() async {
     let worktree = makeWorktree()
     let repositoriesState = makeRepositoriesState(worktree: worktree)
-    var settings = GlobalSettings.default
-    settings.defaultEditorID = OpenWorktreeAction.vscode.settingsID
-    let store = TestStore(
-      initialState: AppFeature.State(
-        repositories: repositoriesState,
-        settings: SettingsFeature.State(settings: settings)
-      )
-    ) {
-      AppFeature()
+    let storage = SettingsTestStorage()
+    let settingsFileURL = URL(
+      fileURLWithPath: "/tmp/supacode-settings-\(UUID().uuidString).json"
+    )
+    let store = withDependencies {
+      $0.settingsFileStorage = storage.storage
+      $0.settingsFileURL = settingsFileURL
+    } operation: {
+      var settings = GlobalSettings.default
+      settings.defaultEditorID = OpenWorktreeAction.finder.settingsID
+      @Shared(.settingsFile) var settingsFile
+      $settingsFile.withLock { $0.global = settings }
+      return TestStore(
+        initialState: AppFeature.State(
+          repositories: repositoriesState,
+          settings: SettingsFeature.State(settings: settings)
+        )
+      ) {
+        AppFeature()
+      }
     }
 
     await store.send(.repositories(.delegate(.selectedWorktreeChanged(worktree))))
-    await store.receive(\.worktreeSettingsLoaded) {
-      $0.openActionSelection = .vscode
-      $0.selectedRunScript = ""
-    }
+    await store.receive(\.worktreeSettingsLoaded)
+    #expect(store.state.openActionSelection == .finder)
+    #expect(store.state.selectedRunScript == "")
     await store.finish()
   }
 

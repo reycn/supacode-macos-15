@@ -426,9 +426,13 @@ struct AppFeature {
         guard state.repositories.selectedWorktreeID == worktreeID else {
           return .none
         }
+        @Shared(.settingsFile) var settingsFile
+        let normalizedDefaultEditorID = OpenWorktreeAction.normalizedDefaultEditorID(
+          settingsFile.global.defaultEditorID
+        )
         state.openActionSelection = OpenWorktreeAction.fromSettingsID(
           settings.openActionID,
-          defaultEditorID: state.settings.defaultEditorID
+          defaultEditorID: normalizedDefaultEditorID
         )
         state.selectedRunScript = settings.runScript
         return .none

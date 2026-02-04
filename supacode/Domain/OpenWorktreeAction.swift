@@ -136,6 +136,18 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
   static let menuOrder: [OpenWorktreeAction] =
     editorPriority + [.xcode] + [.finder] + terminalPriority + gitClientPriority
 
+  static func normalizedDefaultEditorID(_ settingsID: String?) -> String {
+    guard let settingsID, settingsID != automaticSettingsID else {
+      return automaticSettingsID
+    }
+    guard let action = allCases.first(where: { $0.settingsID == settingsID }),
+      action.isInstalled
+    else {
+      return automaticSettingsID
+    }
+    return settingsID
+  }
+
   static func fromSettingsID(
     _ settingsID: String?,
     defaultEditorID: String?
@@ -145,8 +157,9 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     {
       return action
     }
-    if let defaultEditorID, defaultEditorID != automaticSettingsID,
-      let action = allCases.first(where: { $0.settingsID == defaultEditorID })
+    let normalizedDefaultEditorID = normalizedDefaultEditorID(defaultEditorID)
+    if normalizedDefaultEditorID != automaticSettingsID,
+      let action = allCases.first(where: { $0.settingsID == normalizedDefaultEditorID })
     {
       return action
     }

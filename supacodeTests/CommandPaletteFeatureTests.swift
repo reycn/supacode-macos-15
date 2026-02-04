@@ -286,7 +286,7 @@ struct CommandPaletteFeatureTests {
     )
   }
 
-  @Test func queryClearsSelectionWhenEmpty() async {
+  @Test func queryKeepsSelectionWhenEmpty() async {
     var state = CommandPaletteFeature.State()
     state.query = "fox"
     state.selectedIndex = 1
@@ -296,7 +296,7 @@ struct CommandPaletteFeatureTests {
 
     await store.send(.binding(.set(\.query, ""))) {
       $0.query = ""
-      $0.selectedIndex = nil
+      $0.selectedIndex = 1
     }
   }
 

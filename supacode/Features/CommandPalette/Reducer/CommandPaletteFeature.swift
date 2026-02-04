@@ -34,13 +34,6 @@ struct CommandPaletteFeature {
     BindingReducer()
     Reduce { state, action in
       switch action {
-      case .binding(\.query):
-        let trimmed = state.query.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-          state.selectedIndex = nil
-        }
-        return .none
-
       case .binding:
         return .none
 

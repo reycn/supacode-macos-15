@@ -102,20 +102,30 @@ struct AppFeature {
       case .repositories(.delegate(.selectedWorktreeChanged(let worktree))):
         let lastFocusedWorktreeID = worktree?.id
         let repositoryPersistence = repositoryPersistence
+        let worktreesForWatcher = state.repositories.worktreesForInfoWatcher()
         guard let worktree else {
           state.openActionSelection = .finder
           state.selectedRunScript = ""
-          return .merge(
-            .run { _ in
-              await repositoryPersistence.saveLastFocusedWorktreeID(lastFocusedWorktreeID)
-            },
+          var effects: [Effect<Action>] = [
             .run { _ in
               await terminalClient.send(.setSelectedWorktreeID(nil))
             },
             .run { _ in
               await worktreeInfoWatcher.send(.setSelectedWorktreeID(nil))
-            }
-          )
+            },
+            .run { _ in
+              await worktreeInfoWatcher.send(.setWorktrees(worktreesForWatcher))
+            },
+          ]
+          if !state.repositories.isShowingArchivedWorktrees {
+            effects.insert(
+              .run { _ in
+                await repositoryPersistence.saveLastFocusedWorktreeID(lastFocusedWorktreeID)
+              },
+              at: 0
+            )
+          }
+          return .merge(effects)
         }
         let rootURL = worktree.repositoryRootURL
         let worktreeID = worktree.id
@@ -131,6 +141,9 @@ struct AppFeature {
           },
           .run { _ in
             await worktreeInfoWatcher.send(.setSelectedWorktreeID(worktree.id))
+          },
+          .run { _ in
+            await worktreeInfoWatcher.send(.setWorktrees(worktreesForWatcher))
           },
           .send(.worktreeSettingsLoaded(settings, worktreeID: worktreeID))
         )
@@ -150,7 +163,7 @@ struct AppFeature {
 
       case .repositories(.delegate(.repositoriesChanged(let repositories))):
         let ids = Set(repositories.flatMap { $0.worktrees.map(\.id) })
-        let worktrees = repositories.flatMap(\.worktrees)
+        let worktrees = state.repositories.worktreesForInfoWatcher()
         state.runScriptStatusByWorktreeID = state.runScriptStatusByWorktreeID.filter { ids.contains($0.key) }
         if case .repository(let repositoryID)? = state.settings.selection,
           !repositories.contains(where: { $0.id == repositoryID })
@@ -225,7 +238,11 @@ struct AppFeature {
         return .merge(
           .send(.repositories(.setGithubIntegrationEnabled(settings.githubIntegrationEnabled))),
           .send(
-            .repositories(.setSortMergedWorktreesToBottom(settings.sortMergedWorktreesToBottom))
+            .repositories(
+              .setAutomaticallyArchiveMergedWorktrees(
+                settings.automaticallyArchiveMergedWorktrees
+              )
+            )
           ),
           .send(
             .updates(

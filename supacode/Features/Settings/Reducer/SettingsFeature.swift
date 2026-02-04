@@ -15,8 +15,8 @@ struct SettingsFeature {
     var dockBadgeEnabled: Bool
     var notificationSoundEnabled: Bool
     var githubIntegrationEnabled: Bool
-    var deleteBranchOnArchive: Bool
-    var sortMergedWorktreesToBottom: Bool
+    var deleteBranchOnDeleteWorktree: Bool
+    var automaticallyArchiveMergedWorktrees: Bool
     var selection: SettingsSection? = .general
     var repositorySettings: RepositorySettingsFeature.State?
 
@@ -31,8 +31,8 @@ struct SettingsFeature {
       dockBadgeEnabled = settings.dockBadgeEnabled
       notificationSoundEnabled = settings.notificationSoundEnabled
       githubIntegrationEnabled = settings.githubIntegrationEnabled
-      deleteBranchOnArchive = settings.deleteBranchOnArchive
-      sortMergedWorktreesToBottom = settings.sortMergedWorktreesToBottom
+      deleteBranchOnDeleteWorktree = settings.deleteBranchOnDeleteWorktree
+      automaticallyArchiveMergedWorktrees = settings.automaticallyArchiveMergedWorktrees
     }
 
     var globalSettings: GlobalSettings {
@@ -46,8 +46,8 @@ struct SettingsFeature {
         dockBadgeEnabled: dockBadgeEnabled,
         notificationSoundEnabled: notificationSoundEnabled,
         githubIntegrationEnabled: githubIntegrationEnabled,
-        deleteBranchOnArchive: deleteBranchOnArchive,
-        sortMergedWorktreesToBottom: sortMergedWorktreesToBottom
+        deleteBranchOnDeleteWorktree: deleteBranchOnDeleteWorktree,
+        automaticallyArchiveMergedWorktrees: automaticallyArchiveMergedWorktrees
       )
     }
   }
@@ -97,8 +97,8 @@ struct SettingsFeature {
         state.dockBadgeEnabled = normalizedSettings.dockBadgeEnabled
         state.notificationSoundEnabled = normalizedSettings.notificationSoundEnabled
         state.githubIntegrationEnabled = normalizedSettings.githubIntegrationEnabled
-        state.deleteBranchOnArchive = normalizedSettings.deleteBranchOnArchive
-        state.sortMergedWorktreesToBottom = normalizedSettings.sortMergedWorktreesToBottom
+        state.deleteBranchOnDeleteWorktree = normalizedSettings.deleteBranchOnDeleteWorktree
+        state.automaticallyArchiveMergedWorktrees = normalizedSettings.automaticallyArchiveMergedWorktrees
         return .send(.delegate(.settingsChanged(normalizedSettings)))
 
       case .binding:

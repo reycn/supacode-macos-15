@@ -20,8 +20,8 @@ struct SettingsFeatureTests {
       dockBadgeEnabled: false,
       notificationSoundEnabled: true,
       githubIntegrationEnabled: true,
-      deleteBranchOnArchive: false,
-      sortMergedWorktreesToBottom: true
+      deleteBranchOnDeleteWorktree: false,
+      automaticallyArchiveMergedWorktrees: true
     )
     @Shared(.settingsFile) var settingsFile
     $settingsFile.withLock { $0.global = loaded }
@@ -41,8 +41,8 @@ struct SettingsFeatureTests {
       $0.dockBadgeEnabled = false
       $0.notificationSoundEnabled = true
       $0.githubIntegrationEnabled = true
-      $0.deleteBranchOnArchive = false
-      $0.sortMergedWorktreesToBottom = true
+      $0.deleteBranchOnDeleteWorktree = false
+      $0.automaticallyArchiveMergedWorktrees = true
     }
     await store.receive(\.delegate.settingsChanged)
   }
@@ -58,8 +58,8 @@ struct SettingsFeatureTests {
       dockBadgeEnabled: true,
       notificationSoundEnabled: false,
       githubIntegrationEnabled: true,
-      deleteBranchOnArchive: true,
-      sortMergedWorktreesToBottom: false
+      deleteBranchOnDeleteWorktree: true,
+      automaticallyArchiveMergedWorktrees: false
     )
     @Shared(.settingsFile) var settingsFile
     $settingsFile.withLock { $0.global = initialSettings }
@@ -81,8 +81,8 @@ struct SettingsFeatureTests {
       dockBadgeEnabled: initialSettings.dockBadgeEnabled,
       notificationSoundEnabled: initialSettings.notificationSoundEnabled,
       githubIntegrationEnabled: initialSettings.githubIntegrationEnabled,
-      deleteBranchOnArchive: initialSettings.deleteBranchOnArchive,
-      sortMergedWorktreesToBottom: initialSettings.sortMergedWorktreesToBottom
+      deleteBranchOnDeleteWorktree: initialSettings.deleteBranchOnDeleteWorktree,
+      automaticallyArchiveMergedWorktrees: initialSettings.automaticallyArchiveMergedWorktrees
     )
     await store.receive(\.delegate.settingsChanged)
 
@@ -127,8 +127,8 @@ struct SettingsFeatureTests {
       dockBadgeEnabled: false,
       notificationSoundEnabled: false,
       githubIntegrationEnabled: true,
-      deleteBranchOnArchive: true,
-      sortMergedWorktreesToBottom: true
+      deleteBranchOnDeleteWorktree: true,
+      automaticallyArchiveMergedWorktrees: true
     )
 
     await store.send(.settingsLoaded(loaded)) {
@@ -141,8 +141,8 @@ struct SettingsFeatureTests {
       $0.dockBadgeEnabled = false
       $0.notificationSoundEnabled = false
       $0.githubIntegrationEnabled = true
-      $0.deleteBranchOnArchive = true
-      $0.sortMergedWorktreesToBottom = true
+      $0.deleteBranchOnDeleteWorktree = true
+      $0.automaticallyArchiveMergedWorktrees = true
       $0.selection = selection
       $0.repositorySettings = RepositorySettingsFeature.State(
         rootURL: rootURL,

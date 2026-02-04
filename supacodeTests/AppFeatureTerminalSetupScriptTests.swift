@@ -192,7 +192,7 @@ struct AppFeatureTerminalSetupScriptTests {
     var repositoriesState = RepositoriesFeature.State()
     repositoriesState.repositories = [repository]
     if selected {
-      repositoriesState.selectedWorktreeID = worktree.id
+      repositoriesState.selection = .worktree(worktree.id)
     }
     if pendingSetupScript {
       repositoriesState.pendingSetupScriptWorktreeIDs = [worktree.id]

@@ -8,8 +8,22 @@ struct SidebarListView: View {
 
   var body: some View {
     let selection = Binding<SidebarSelection?>(
-      get: { store.selectedWorktreeID.map(SidebarSelection.worktree) },
-      set: { store.send(.selectWorktree($0?.worktreeID)) }
+      get: {
+        if store.isShowingArchivedWorktrees {
+          return .archivedWorktrees
+        }
+        return store.selectedWorktreeID.map(SidebarSelection.worktree)
+      },
+      set: { newValue in
+        switch newValue {
+        case .archivedWorktrees:
+          store.send(.selectArchivedWorktrees)
+        case .worktree(let id):
+          store.send(.selectWorktree(id))
+        case nil:
+          store.send(.selectWorktree(nil))
+        }
+      }
     )
     let state = store.state
     let orderedRoots = state.orderedRepositoryRoots()
@@ -29,11 +43,9 @@ struct SidebarListView: View {
           let repositoryID = rootURL.standardizedFileURL.path(percentEncoded: false)
           if let failureMessage = state.loadFailuresByID[repositoryID] {
             let name = Repository.name(for: rootURL.standardizedFileURL)
-            let initials = Repository.initials(from: name)
             let path = rootURL.standardizedFileURL.path(percentEncoded: false)
             FailedRepositoryRow(
               name: name,
-              initials: initials,
               path: path,
               showFailure: {
                 let message = "\(path)\n\n\(failureMessage)"

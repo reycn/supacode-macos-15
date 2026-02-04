@@ -60,7 +60,9 @@ struct CommandPaletteOverlayView: View {
     }
     .onChange(of: store.isPresented) { _, newValue in
       isQueryFocused = newValue
-      if !newValue {
+      if newValue {
+        updateSelection(rows: filteredItems)
+      } else {
         hoveredID = nil
       }
     }
@@ -70,13 +72,6 @@ struct CommandPaletteOverlayView: View {
   }
 
   private func updateSelection(rows: [CommandPaletteItem]) {
-    let trimmed = store.query.trimmingCharacters(in: .whitespacesAndNewlines)
-    if trimmed.isEmpty {
-      if store.selectedIndex != nil {
-        store.selectedIndex = nil
-      }
-      return
-    }
     let count = rows.count
     if count == 0 {
       if store.selectedIndex != nil {

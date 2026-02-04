@@ -14,7 +14,7 @@ struct WorktreeSettingsView: View {
               isOn: $store.deleteBranchOnArchive
             )
             .help("Delete the local branch when archiving a worktree")
-            Text("Removes the local branch along with the worktree. Remote branches must be deleted on GitHub.")
+            Text("Delete the local branch when archiving a worktree")
               .foregroundStyle(.secondary)
             Text("Uncommitted changes will be lost.")
               .foregroundStyle(.red)

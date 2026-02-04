@@ -41,9 +41,6 @@ struct CommandPaletteOverlayView: View {
                     moveSelection(direction, rows: filteredItems)
                   }
                 },
-                activateShortcut: { index in
-                  activateShortcut(index, rows: filteredItems)
-                },
                 activate: { id in
                   activate(id, rows: filteredItems)
                 }
@@ -112,11 +109,6 @@ struct CommandPaletteOverlayView: View {
     store.send(.activate(rows[rows.count - 1].kind))
   }
 
-  private func activateShortcut(_ index: Int, rows: [CommandPaletteItem]) {
-    guard rows.indices.contains(index) else { return }
-    store.send(.activate(rows[index].kind))
-  }
-
   private func activate(_ id: CommandPaletteItem.ID, rows: [CommandPaletteItem]) {
     guard let item = rows.first(where: { $0.id == id }) else { return }
     store.send(.activate(item.kind))
@@ -130,7 +122,6 @@ private struct CommandPaletteCard: View {
   @Binding var hoveredID: CommandPaletteItem.ID?
   let isQueryFocused: FocusState<Bool>
   let onEvent: (CommandPaletteKeyboardEvent) -> Void
-  let activateShortcut: (Int) -> Void
   let activate: (CommandPaletteItem.ID) -> Void
 
   private var backgroundColor: Color {
@@ -149,8 +140,8 @@ private struct CommandPaletteCard: View {
 
       Divider()
 
-      CommandPaletteShortcutHandler(count: min(5, items.count)) { index in
-        activateShortcut(index)
+      CommandPaletteShortcutHandler(items: Array(items.prefix(5))) { id in
+        activate(id)
       }
 
       CommandPaletteList(
@@ -498,34 +489,22 @@ private struct ShortcutSymbolsView: View {
 }
 
 private struct CommandPaletteShortcutHandler: View {
-  let count: Int
-  let activate: (Int) -> Void
+  let items: [CommandPaletteItem]
+  let activate: (CommandPaletteItem.ID) -> Void
 
   var body: some View {
     Group {
-      if count >= 1 {
-        shortcutButton(index: 0)
-      }
-      if count >= 2 {
-        shortcutButton(index: 1)
-      }
-      if count >= 3 {
-        shortcutButton(index: 2)
-      }
-      if count >= 4 {
-        shortcutButton(index: 3)
-      }
-      if count >= 5 {
-        shortcutButton(index: 4)
+      ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+        shortcutButton(index: index, itemID: item.id)
       }
     }
     .frame(width: 0, height: 0)
     .accessibilityHidden(true)
   }
 
-  private func shortcutButton(index: Int) -> some View {
+  private func shortcutButton(index: Int, itemID: CommandPaletteItem.ID) -> some View {
     Button {
-      activate(index)
+      activate(itemID)
     } label: {
       Color.clear
     }

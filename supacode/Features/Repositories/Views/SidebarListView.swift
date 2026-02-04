@@ -72,6 +72,8 @@ struct SidebarListView: View {
       }
     }
     .listStyle(.sidebar)
+    .environment(\.defaultMinListRowHeight, 0)
+    .environment(\.defaultMinListHeaderHeight, 0)
     .frame(minWidth: 220)
     .safeAreaInset(edge: .bottom) {
       SidebarFooterView(store: store)

@@ -7,6 +7,7 @@ struct RepositorySectionView: View {
   @Bindable var store: StoreOf<RepositoriesFeature>
   let terminalManager: WorktreeTerminalManager
   @Environment(\.colorScheme) private var colorScheme
+  @State private var isHovering = false
 
   var body: some View {
     let state = store.state
@@ -46,39 +47,42 @@ struct RepositorySectionView: View {
           ProgressView()
             .controlSize(.small)
         }
-        Menu {
-          Button("Repo Settings") {
-            openRepoSettings()
+        if isHovering || isRemovingRepository {
+          Menu {
+            Button("Repo Settings") {
+              openRepoSettings()
+            }
+            .help("Repo Settings ")
+            Button("Remove Repository") {
+              store.send(.requestRemoveRepository(repository.id))
+            }
+            .help("Remove repository ")
+            .disabled(isRemovingRepository)
+          } label: {
+            Label("Repository options", systemImage: "ellipsis")
+              .labelStyle(.iconOnly)
+              .frame(maxHeight: .infinity)
+              .contentShape(Rectangle())
           }
-          .help("Repo Settings ")
-          Button("Remove Repository") {
-            store.send(.requestRemoveRepository(repository.id))
-          }
-          .help("Remove repository ")
+          .buttonStyle(.plain)
+          .foregroundStyle(.secondary)
+          .help("Repository options ")
           .disabled(isRemovingRepository)
-        } label: {
-          Label("Repository options", systemImage: "ellipsis")
-            .labelStyle(.iconOnly)
-            .frame(maxHeight: .infinity)
-            .contentShape(Rectangle())
+          Button {
+            store.send(.createRandomWorktreeInRepository(repository.id))
+          } label: {
+            Label("New Worktree", systemImage: "plus")
+              .labelStyle(.iconOnly)
+              .frame(maxHeight: .infinity)
+              .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .foregroundStyle(.secondary)
+          .help("New Worktree (\(AppShortcuts.newWorktree.display))")
+          .disabled(isRemovingRepository)
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
-        .help("Repository options ")
-        .disabled(isRemovingRepository)
-        Button {
-          store.send(.createRandomWorktreeInRepository(repository.id))
-        } label: {
-          Label("New Worktree", systemImage: "plus")
-            .labelStyle(.iconOnly)
-            .frame(maxHeight: .infinity)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
-        .help("New Worktree (\(AppShortcuts.newWorktree.display))")
-        .disabled(isRemovingRepository)
       }
+      .onHover { isHovering = $0 }
       .contentShape(.rect)
       .contextMenu {
         Button("Repo Settings") {

@@ -59,6 +59,7 @@ struct RepositorySectionView: View {
         } label: {
           Label("Repository options", systemImage: "ellipsis")
             .labelStyle(.iconOnly)
+            .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -70,6 +71,7 @@ struct RepositorySectionView: View {
         } label: {
           Label("New Worktree", systemImage: "plus")
             .labelStyle(.iconOnly)
+            .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -92,7 +94,6 @@ struct RepositorySectionView: View {
       .contentShape(.dragPreview, .rect)
       .environment(\.colorScheme, colorScheme)
       .preferredColorScheme(colorScheme)
-      .listRowInsets(EdgeInsets())
     }
   }
 }

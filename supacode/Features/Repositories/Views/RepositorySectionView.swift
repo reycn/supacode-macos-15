@@ -3,12 +3,12 @@ import SwiftUI
 
 struct RepositorySectionView: View {
   let repository: Repository
+  let isDragActive: Bool
   @Binding var expandedRepoIDs: Set<Repository.ID>
   @Bindable var store: StoreOf<RepositoriesFeature>
   let terminalManager: WorktreeTerminalManager
   @Environment(\.colorScheme) private var colorScheme
   @State private var isHovering = false
-  @State private var draggingRepositoryRoots: Set<URL> = []
 
   var body: some View {
     let state = store.state
@@ -30,8 +30,7 @@ struct RepositorySectionView: View {
     let openRepoSettings = {
       _ = store.send(.openRepositorySettings(repository.id))
     }
-    let repositoryRoot = repository.rootURL.standardizedFileURL
-    let isDragging = draggingRepositoryRoots.contains(repositoryRoot)
+    let isDragging = isDragActive
 
     Section {
       WorktreeRowsView(
@@ -93,24 +92,6 @@ struct RepositorySectionView: View {
         .contentShape(.dragPreview, .rect)
         .environment(\.colorScheme, colorScheme)
         .preferredColorScheme(colorScheme)
-        .onDragSessionUpdated { session in
-          let draggedRoots = Set(session.draggedItemIDs(for: URL.self))
-          if case .ended = session.phase {
-            if !draggingRepositoryRoots.isEmpty {
-              draggingRepositoryRoots = []
-            }
-            return
-          }
-          if case .dataTransferCompleted = session.phase {
-            if !draggingRepositoryRoots.isEmpty {
-              draggingRepositoryRoots = []
-            }
-            return
-          }
-          if draggedRoots != draggingRepositoryRoots {
-            draggingRepositoryRoots = draggedRoots
-          }
-        }
       }
       .onHover { isHovering = $0 }
       .contextMenu {

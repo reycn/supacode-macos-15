@@ -11,7 +11,6 @@ struct WorktreeRow: View {
   let isRunScriptRunning: Bool
   let showsNotificationIndicator: Bool
   let notifications: [WorktreeTerminalNotification]
-  let onClearNotifications: (() -> Void)?
   let onFocusNotification: (WorktreeTerminalNotification) -> Void
   let shortcutHint: String?
   let archiveAction: (() -> Void)?
@@ -36,7 +35,6 @@ struct WorktreeRow: View {
         if showsNotificationIndicator {
           NotificationPopoverButton(
             notifications: notifications,
-            onClear: onClearNotifications,
             onFocusNotification: onFocusNotification
           ) {
             Image(systemName: "bell.fill")

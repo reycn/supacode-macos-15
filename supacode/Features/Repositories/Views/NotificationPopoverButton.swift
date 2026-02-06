@@ -2,7 +2,6 @@ import SwiftUI
 
 struct NotificationPopoverButton<Label: View>: View {
   let notifications: [WorktreeTerminalNotification]
-  let onClear: (() -> Void)?
   let onFocusNotification: (WorktreeTerminalNotification) -> Void
   @ViewBuilder let label: () -> Label
   @State private var isPresented = false
@@ -12,13 +11,12 @@ struct NotificationPopoverButton<Label: View>: View {
 
   var body: some View {
     Button {
-      onClear?()
     } label: {
       label()
     }
     .buttonStyle(.plain)
     .contentShape(.rect)
-    .help("Unread notifications. Hover to show. Click to clear.")
+    .help("Unread notifications. Hover to show.")
     .accessibilityLabel("Unread notifications")
     .onHover { hovering in
       isHoveringButton = hovering

@@ -98,10 +98,6 @@ struct WorktreeRowsView: View {
       ? { store.send(.requestArchiveWorktree(row.id, repository.id)) }
       : nil
     let notifications = terminalManager.stateIfExists(for: row.id)?.notifications ?? []
-    let onClearNotifications: (() -> Void)? =
-      showsNotificationIndicator
-      ? { terminalManager.stateIfExists(for: row.id)?.clearNotificationIndicator() }
-      : nil
     let onFocusNotification: (WorktreeTerminalNotification) -> Void = { notification in
       guard let terminalState = terminalManager.stateIfExists(for: row.id) else {
         return
@@ -113,7 +109,6 @@ struct WorktreeRowsView: View {
       displayName: displayName,
       showsNotificationIndicator: showsNotificationIndicator,
       notifications: notifications,
-      onClearNotifications: onClearNotifications,
       onFocusNotification: onFocusNotification,
       shortcutHint: shortcutHint,
       archiveAction: archiveAction,
@@ -156,7 +151,6 @@ struct WorktreeRowsView: View {
     let displayName: String
     let showsNotificationIndicator: Bool
     let notifications: [WorktreeTerminalNotification]
-    let onClearNotifications: (() -> Void)?
     let onFocusNotification: (WorktreeTerminalNotification) -> Void
     let shortcutHint: String?
     let archiveAction: (() -> Void)?
@@ -177,7 +171,6 @@ struct WorktreeRowsView: View {
       isRunScriptRunning: isRunScriptRunning,
       showsNotificationIndicator: config.showsNotificationIndicator,
       notifications: config.notifications,
-      onClearNotifications: config.onClearNotifications,
       onFocusNotification: config.onFocusNotification,
       shortcutHint: config.shortcutHint,
       archiveAction: config.archiveAction

@@ -13,7 +13,10 @@ struct ToolbarNotificationsPopoverButton: View {
 
   private var notificationCount: Int {
     groups.reduce(0) { count, repository in
-      count + repository.notificationCount
+      count
+        + repository.worktrees.reduce(0) { worktreeCount, worktree in
+          worktreeCount + worktree.notifications.filter { !$0.isRead }.count
+        }
     }
   }
 

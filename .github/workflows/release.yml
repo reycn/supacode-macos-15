@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: read
     env:
-      RELEASE_REPO_SH: supabitapp/supacode-sh
+      RELEASE_REPO: supabitapp/supacode
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v6
@@ -36,7 +36,7 @@ jobs:
       - name: Prepare release context
         run: |
           set -euo pipefail
-          RELEASE_TAGS=$(gh release list -R "$RELEASE_REPO_SH" --limit 100 | awk '{print $1}')
+          RELEASE_TAGS=$(gh release list -R "$RELEASE_REPO" --limit 100 | awk '{print $1}')
           PREV_TAG=$(printf '%s\n' "$RELEASE_TAGS" | awk -v tag="$TAG" '$1!=tag {print $1; exit}')
           if [ -z "$PREV_TAG" ]; then
             PREV_TAG=$(git describe --tags --abbrev=0 --match "v*" "$TAG^" 2>/dev/null || true)
@@ -340,13 +340,13 @@ jobs:
 
           curl -fsSL "https://supacode.sh/download/latest/appcast.xml" -o "$STAGING/appcast.xml" || true
 
-          RELEASE_REPO_SH="supabitapp/supacode-sh"
+          RELEASE_REPO="supabitapp/supacode"
           SEEN_VERSIONS=""
           for i in $(seq 1 $MAX_DELTAS); do
-            PREV_TAG=$(gh release list --limit $i --exclude-drafts --exclude-pre-releases -R "$RELEASE_REPO_SH" --json tagName --jq ".[$((i-1))].tagName" 2>/dev/null || true)
+            PREV_TAG=$(gh release list --limit $i --exclude-drafts --exclude-pre-releases -R "$RELEASE_REPO" --json tagName --jq ".[$((i-1))].tagName" 2>/dev/null || true)
             if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "$TAG" ]; then
               echo "Downloading $PREV_TAG for delta generation..."
-              gh release download "$PREV_TAG" -p "supacode.app.zip" -O "$STAGING/supacode-$PREV_TAG.app.zip" -R "$RELEASE_REPO_SH" 2>/dev/null || true
+              gh release download "$PREV_TAG" -p "supacode.app.zip" -O "$STAGING/supacode-$PREV_TAG.app.zip" -R "$RELEASE_REPO" 2>/dev/null || true
               if [ -f "$STAGING/supacode-$PREV_TAG.app.zip" ]; then
                 BUNDLE_VERSION=$(unzip -p "$STAGING/supacode-$PREV_TAG.app.zip" "supacode.app/Contents/Info.plist" 2>/dev/null | /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" /dev/stdin 2>/dev/null || echo "")
                 if [ -n "$BUNDLE_VERSION" ] && echo "$SEEN_VERSIONS" | grep -q "^$BUNDLE_VERSION$"; then
@@ -354,13 +354,13 @@ jobs:
                   rm -f "$STAGING/supacode-$PREV_TAG.app.zip"
                 else
                   [ -n "$BUNDLE_VERSION" ] && SEEN_VERSIONS="$SEEN_VERSIONS$BUNDLE_VERSION"$'\n'
-                  gh release view "$PREV_TAG" -R "$RELEASE_REPO_SH" --json body --jq '.body' > "$STAGING/supacode-$PREV_TAG.app.md" 2>/dev/null || true
+                  gh release view "$PREV_TAG" -R "$RELEASE_REPO" --json body --jq '.body' > "$STAGING/supacode-$PREV_TAG.app.md" 2>/dev/null || true
                 fi
               fi
             fi
           done
 
-          printf "%s" "$SPARKLE_PRIVATE_KEY" | tr -d '\r\n\t ' | ./bins/generate_appcast --download-url-prefix "https://supacode.sh/download/$TAG/" --full-release-notes-url "https://github.com/supabitapp/supacode-sh/releases" --embed-release-notes --maximum-versions $MAX_DELTAS --maximum-deltas $MAX_DELTAS --delta-compression lzma --ed-key-file - "$STAGING"
+          printf "%s" "$SPARKLE_PRIVATE_KEY" | tr -d '\r\n\t ' | ./bins/generate_appcast --download-url-prefix "https://supacode.sh/download/$TAG/" --full-release-notes-url "https://github.com/supabitapp/supacode/releases" --embed-release-notes --maximum-versions $MAX_DELTAS --maximum-deltas $MAX_DELTAS --delta-compression lzma --ed-key-file - "$STAGING"
           cp "$STAGING/appcast.xml" build/appcast.xml
           find "$STAGING" -name "*.delta" -exec cp {} build/ \; 2>/dev/null || true
       - uses: actions/upload-artifact@v6
@@ -378,8 +378,7 @@ jobs:
     permissions:
       contents: write
     env:
-      GH_TOKEN: ${{ secrets.SUPACODE_SH_RELEASE_TOKEN }}
-      RELEASE_REPO_SH: supabitapp/supacode-sh
+      RELEASE_REPO: supabitapp/supacode
     steps:
       - run: |
           TAG="$GITHUB_REF_NAME"
@@ -399,11 +398,11 @@ jobs:
           NOTES_FILE=build/release-notes.md
           DELTA_FILES=$(find build -name "*.delta" -type f 2>/dev/null | tr '\n' ' ' || true)
 
-          if gh release view "$TAG" -R "$RELEASE_REPO_SH" >/dev/null 2>&1; then
-            gh release edit "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_SH"
-            gh release upload "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml $DELTA_FILES --clobber -R "$RELEASE_REPO_SH"
+          if gh release view "$TAG" -R "$RELEASE_REPO" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO"
+            gh release upload "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml $DELTA_FILES --clobber -R "$RELEASE_REPO"
           else
-            gh release create "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml $DELTA_FILES --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_SH"
+            gh release create "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml $DELTA_FILES --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO"
           fi
       - run: |
           set -euo pipefail

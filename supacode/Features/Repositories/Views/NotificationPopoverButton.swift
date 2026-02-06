@@ -11,6 +11,7 @@ struct NotificationPopoverButton<Label: View>: View {
 
   var body: some View {
     Button {
+      isPresented.toggle()
     } label: {
       label()
     }

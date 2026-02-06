@@ -56,9 +56,7 @@ struct ToolbarNotificationsPopoverButton: View {
       }
       .onDisappear {
         isHoveringPopover = false
-        if !isPinnedOpen {
-          updatePresentation()
-        }
+        isPinnedOpen = false
       }
     }
     .onChange(of: groups) { _, newValue in

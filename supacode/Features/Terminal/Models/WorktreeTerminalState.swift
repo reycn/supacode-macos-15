@@ -191,7 +191,7 @@ final class WorktreeTerminalState {
         }
       }
     }
-    if let surfaceToFocus {
+    if let surfaceToFocus, surfaceToFocus.window?.firstResponder is GhosttySurfaceView {
       surfaceToFocus.window?.makeFirstResponder(surfaceToFocus)
     }
   }

@@ -3,6 +3,7 @@ import SwiftUI
 struct NotificationPopoverButton<Label: View>: View {
   let notifications: [WorktreeTerminalNotification]
   let onClear: (() -> Void)?
+  let onFocusSurface: (UUID) -> Void
   @ViewBuilder let label: () -> Label
   @State private var isPresented = false
   @State private var isHoveringButton = false
@@ -24,7 +25,7 @@ struct NotificationPopoverButton<Label: View>: View {
       updatePresentation()
     }
     .popover(isPresented: $isPresented) {
-      NotificationPopoverView(notifications: notifications)
+      NotificationPopoverView(notifications: notifications, onFocusSurface: onFocusSurface)
         .onHover { hovering in
           isHoveringPopover = hovering
           updatePresentation()

@@ -102,11 +102,15 @@ struct WorktreeRowsView: View {
       showsNotificationIndicator
       ? { terminalManager.stateIfExists(for: row.id)?.clearNotificationIndicator() }
       : nil
+    let onFocusSurface: (UUID) -> Void = { surfaceId in
+      terminalManager.stateIfExists(for: row.id)?.focusSurface(id: surfaceId)
+    }
     let config = WorktreeRowViewConfig(
       displayName: displayName,
       showsNotificationIndicator: showsNotificationIndicator,
       notifications: notifications,
       onClearNotifications: onClearNotifications,
+      onFocusSurface: onFocusSurface,
       shortcutHint: shortcutHint,
       archiveAction: archiveAction,
       moveDisabled: moveDisabled
@@ -149,6 +153,7 @@ struct WorktreeRowsView: View {
     let showsNotificationIndicator: Bool
     let notifications: [WorktreeTerminalNotification]
     let onClearNotifications: (() -> Void)?
+    let onFocusSurface: (UUID) -> Void
     let shortcutHint: String?
     let archiveAction: (() -> Void)?
     let moveDisabled: Bool
@@ -169,6 +174,7 @@ struct WorktreeRowsView: View {
       showsNotificationIndicator: config.showsNotificationIndicator,
       notifications: config.notifications,
       onClearNotifications: config.onClearNotifications,
+      onFocusSurface: config.onFocusSurface,
       shortcutHint: config.shortcutHint,
       archiveAction: config.archiveAction
     )

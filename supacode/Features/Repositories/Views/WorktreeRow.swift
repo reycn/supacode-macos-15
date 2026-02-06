@@ -12,6 +12,7 @@ struct WorktreeRow: View {
   let showsNotificationIndicator: Bool
   let notifications: [WorktreeTerminalNotification]
   let onClearNotifications: (() -> Void)?
+  let onFocusSurface: (UUID) -> Void
   let shortcutHint: String?
   let archiveAction: (() -> Void)?
   @Environment(\.colorScheme) private var colorScheme
@@ -45,7 +46,8 @@ struct WorktreeRow: View {
         if showsNotificationIndicator {
           NotificationPopoverButton(
             notifications: notifications,
-            onClear: onClearNotifications
+            onClear: onClearNotifications,
+            onFocusSurface: onFocusSurface
           ) {
             Image(systemName: "bell.fill")
               .font(.caption)

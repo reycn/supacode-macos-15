@@ -12,36 +12,42 @@ struct ArchivedWorktreeRowView: View {
       pullRequest: info?.pullRequest
     )
     let deleteShortcut = KeyboardShortcut(.delete, modifiers: [.command, .shift]).display
-    VStack(alignment: .leading, spacing: 6) {
+    VStack(alignment: .leading, spacing: 4) {
       HStack(alignment: .firstTextBaseline) {
         Text(worktree.name)
           .font(.headline)
+        Spacer(minLength: 12)
+        HStack(spacing: 8) {
+          Button("Unarchive", systemImage: "tray.and.arrow.up") {
+            onUnarchive()
+          }
+          .help("Unarchive worktree")
+          Button("Delete", systemImage: "trash", role: .destructive) {
+            onDelete()
+          }
+          .help("Delete Worktree (\(deleteShortcut))")
+        }
+        .font(.callout)
+        .buttonStyle(.borderless)
+      }
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(spacing: 8) {
+          if !worktree.detail.isEmpty {
+            Text(worktree.detail)
+              .foregroundStyle(.secondary)
+              .monospaced()
+              .lineLimit(1)
+              .truncationMode(.middle)
+          }
+          if let createdAt = worktree.createdAt {
+            Text("Created \(createdAt, style: .relative)")
+              .foregroundStyle(.secondary)
+          }
+        }
         Spacer(minLength: 8)
         WorktreePullRequestAccessoryView(display: display)
       }
-      HStack(spacing: 8) {
-        if !worktree.detail.isEmpty {
-          Text(worktree.detail)
-            .foregroundStyle(.secondary)
-            .monospaced()
-        }
-        if let createdAt = worktree.createdAt {
-          Text("Created \(createdAt, style: .relative)")
-            .foregroundStyle(.secondary)
-        }
-      }
       .font(.caption)
-      HStack(spacing: 12) {
-        Button("Unarchive", systemImage: "tray.and.arrow.up") {
-          onUnarchive()
-        }
-        .help("Unarchive worktree")
-        Button("Delete Worktree", role: .destructive) {
-          onDelete()
-        }
-        .help("Delete Worktree (\(deleteShortcut))")
-      }
-      .font(.callout)
     }
   }
 }

@@ -1,134 +1,16 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
-  workflow_dispatch:
-    inputs:
-      tag:
-        required: true
-        type: string
+  release:
+    types: [published]
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  release_notes:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    env:
-      RELEASE_REPO: supabitapp/supacode
-      GH_TOKEN: ${{ github.token }}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-      - run: |
-          TAG="$GITHUB_REF_NAME"
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            TAG="${{ inputs.tag }}"
-          fi
-          echo "TAG=$TAG" >> "$GITHUB_ENV"
-      - name: Prepare release context
-        run: |
-          set -euo pipefail
-          RELEASE_TAGS=$(gh release list -R "$RELEASE_REPO" --limit 100 | awk '{print $1}')
-          PREV_TAG=$(printf '%s\n' "$RELEASE_TAGS" | awk -v tag="$TAG" '$1!=tag {print $1; exit}')
-          if [ -z "$PREV_TAG" ]; then
-            PREV_TAG=$(git describe --tags --abbrev=0 --match "v*" "$TAG^" 2>/dev/null || true)
-          fi
-          if [ -n "$PREV_TAG" ]; then
-            if git rev-parse "$PREV_TAG" >/dev/null 2>&1; then
-              RANGE="$PREV_TAG..$TAG"
-            else
-              RANGE="$(git rev-list --max-parents=0 "$TAG")..$TAG"
-            fi
-          else
-            RANGE="$(git rev-list --max-parents=0 "$TAG")..$TAG"
-          fi
-          COMMITS=$(git log --pretty=format:"%h %s" "$RANGE")
-          CHANGES=$(git diff --name-status "$RANGE")
-          mkdir -p build
-          cat > build/release-prompt.txt <<EOF
-          You are generating release notes for Supacode.
-          Release tag: $TAG
-          Compare range: $RANGE
-
-          Commits:
-          $COMMITS
-
-          Files changed:
-          $CHANGES
-
-          Requirements:
-          - Return JSON that matches the provided schema exactly.
-          - new_features, bug_fixes, improvements are arrays of user-facing bullet text.
-          - Keep each item short, concrete, and non-redundant.
-          - If a section has no items, use an empty array.
-          - ONLY include user-facing changes that affect the end user experience.
-          - EXCLUDE internal changes, refactoring, CI/CD configs, build configs, gatekeeping, linting, and developer tooling.
-          EOF
-      - name: Generate release notes data
-        uses: openai/codex-action@v1
-        with:
-          openai-api-key: ${{ secrets.REVIEW_OPENAI_API_KEY }}
-          prompt-file: build/release-prompt.txt
-          output-schema: |
-            {
-              "type": "object",
-              "properties": {
-                "new_features": { "type": "array", "items": { "type": "string" } },
-                "bug_fixes": { "type": "array", "items": { "type": "string" } },
-                "improvements": { "type": "array", "items": { "type": "string" } }
-              },
-              "required": ["new_features", "bug_fixes", "improvements"],
-              "additionalProperties": false
-            }
-          output-file: build/release-notes.json
-      - name: Build release notes markdown
-        run: |
-          python3 - <<'PY'
-          import json
-          from datetime import datetime
-          from pathlib import Path
-
-          data = json.loads(Path("build/release-notes.json").read_text())
-          today = datetime.now().strftime("%d %b %Y")
-          lines = [f"**📅 Release date:** {today}"]
-
-          def add_section(title, items):
-            if items:
-              lines.append("")
-              lines.append(f"**{title}**")
-              lines.extend([f"- {item}" for item in items])
-
-          new_features = data.get("new_features", [])
-          bug_fixes = data.get("bug_fixes", [])
-          improvements = data.get("improvements", [])
-
-          add_section("✨ New Features", new_features)
-          add_section("🐛 Bug Fixes", bug_fixes)
-          add_section("🌱 Improvements", improvements)
-
-          if not (new_features or bug_fixes or improvements):
-            lines.append("")
-            lines.append("**ℹ️ Notes**")
-            lines.append("- No user-facing changes in this release.")
-
-          Path("build/release-notes.md").write_text("\n".join(lines).strip() + "\n")
-          PY
-      - uses: actions/upload-artifact@v6
-        with:
-          name: release-notes
-          path: build/release-notes.md
-
   build:
     runs-on: macos-26
-    needs: [release_notes]
     permissions:
       contents: read
     env:
@@ -164,12 +46,7 @@ jobs:
           set -euo pipefail
           GHOSTTY_SHA=$(git -C ThirdParty/ghostty rev-parse HEAD)
           printf '%s\n' "GHOSTTY_SHA=$GHOSTTY_SHA" >> "$GITHUB_ENV"
-      - run: |
-          TAG="$GITHUB_REF_NAME"
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            TAG="${{ inputs.tag }}"
-          fi
-          echo "TAG=$TAG" >> "$GITHUB_ENV"
+      - run: echo "TAG=${{ github.event.release.tag_name }}" >> "$GITHUB_ENV"
       - run: |
           echo "$DEVELOPER_ID_CERT_P12" | base64 --decode > build-cert.p12
           security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
@@ -320,10 +197,11 @@ jobs:
 
           xcrun stapler staple "$DMG_PATH"
           echo "DMG_PATH=$DMG_PATH" >> "$GITHUB_ENV"
-      - uses: actions/download-artifact@v7
-        with:
-          name: release-notes
-          path: build
+      - name: Fetch release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$TAG" --json body --jq '.body' > build/release-notes.md
       - name: Generate appcast with history and deltas
         env:
           GH_TOKEN: ${{ github.token }}
@@ -374,36 +252,20 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
-    needs: [release_notes, build]
+    needs: [build]
     permissions:
       contents: write
     env:
       RELEASE_REPO: supabitapp/supacode
     steps:
-      - run: |
-          TAG="$GITHUB_REF_NAME"
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            TAG="${{ inputs.tag }}"
-          fi
-          echo "TAG=$TAG" >> "$GITHUB_ENV"
-      - uses: actions/download-artifact@v7
-        with:
-          name: release-notes
-          path: build
+      - run: echo "TAG=${{ github.event.release.tag_name }}" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v7
         with:
           name: build-artifacts
           path: build
       - run: |
-          NOTES_FILE=build/release-notes.md
           DELTA_FILES=$(find build -name "*.delta" -type f 2>/dev/null | tr '\n' ' ' || true)
-
-          if gh release view "$TAG" -R "$RELEASE_REPO" >/dev/null 2>&1; then
-            gh release edit "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO"
-            gh release upload "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml $DELTA_FILES --clobber -R "$RELEASE_REPO"
-          else
-            gh release create "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml $DELTA_FILES --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO"
-          fi
+          gh release upload "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml $DELTA_FILES --clobber -R "$RELEASE_REPO"
       - run: |
           set -euo pipefail
           curl -fsSL "https://supacode.sh/download/$TAG/supacode.app.zip" -o /dev/null

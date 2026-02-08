@@ -11,7 +11,7 @@ A macOS app for running multiple coding agents in isolated worktrees.
 
 ## Requirements
 
-- macOS 26.0+
+- macOS 15.0+ (Sequoia)
 - [mise](https://mise.jdx.dev/) (for dependencies)
 
 ## Building

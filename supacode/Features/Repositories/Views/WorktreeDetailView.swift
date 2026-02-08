@@ -217,7 +217,7 @@ struct WorktreeDetailView: View {
         )
       }
 
-      ToolbarSpacer(.flexible)
+      CompatibleToolbarSpacer(.flexible)
 
       ToolbarItemGroup {
         ToolbarStatusView(
@@ -228,7 +228,7 @@ struct WorktreeDetailView: View {
       }
 
       if !toolbarState.notificationGroups.isEmpty {
-        ToolbarSpacer(.fixed)
+        CompatibleToolbarSpacer(.fixed)
         ToolbarItemGroup {
           ToolbarNotificationsPopoverButton(
             groups: toolbarState.notificationGroups,
@@ -239,7 +239,7 @@ struct WorktreeDetailView: View {
         }
       }
 
-      ToolbarSpacer(.flexible)
+      CompatibleToolbarSpacer(.flexible)
 
       ToolbarItemGroup {
         openMenu(
@@ -247,7 +247,7 @@ struct WorktreeDetailView: View {
           showExtras: toolbarState.showExtras
         )
       }
-      ToolbarSpacer(.fixed)
+      CompatibleToolbarSpacer(.fixed)
 
       if toolbarState.runScriptIsRunning || toolbarState.runScriptEnabled {
         ToolbarItem {
@@ -454,4 +454,38 @@ private struct WorktreeToolbarPreview: View {
 
 #Preview("Worktree Toolbar") {
   WorktreeToolbarPreview()
+}
+
+// MARK: - Compatible Toolbar Spacer
+
+/// A wrapper for ToolbarSpacer that provides fallback for macOS versions before 26.0.
+/// On macOS 26.0+, uses the native ToolbarSpacer. On older versions, uses an empty spacer.
+private struct CompatibleToolbarSpacer: ToolbarContent {
+  enum SpacerType {
+    case flexible
+    case fixed
+  }
+
+  private let type: SpacerType
+
+  init(_ type: SpacerType) {
+    self.type = type
+  }
+
+  var body: some ToolbarContent {
+    if #available(macOS 26.0, *) {
+      switch type {
+      case .flexible:
+        ToolbarSpacer(.flexible)
+      case .fixed:
+        ToolbarSpacer(.fixed)
+      }
+    } else {
+      // On older macOS, use an empty ToolbarItem as a minimal spacer
+      ToolbarItem {
+        Spacer()
+          .frame(width: type == .fixed ? 8 : nil)
+      }
+    }
+  }
 }

@@ -126,24 +126,7 @@ struct WorktreeRowsView: View {
     .contentShape(.dragPreview, .rect)
     .environment(\.colorScheme, colorScheme)
     .preferredColorScheme(colorScheme)
-    .onDragSessionUpdated { session in
-      let draggedIDs = Set(session.draggedItemIDs(for: Worktree.ID.self))
-      if case .ended = session.phase {
-        if !draggingWorktreeIDs.isEmpty {
-          draggingWorktreeIDs = []
-        }
-        return
-      }
-      if case .dataTransferCompleted = session.phase {
-        if !draggingWorktreeIDs.isEmpty {
-          draggingWorktreeIDs = []
-        }
-        return
-      }
-      if draggedIDs != draggingWorktreeIDs {
-        draggingWorktreeIDs = draggedIDs
-      }
-    }
+    .modifier(DragSessionUpdatedModifier(draggingWorktreeIDs: $draggingWorktreeIDs))
   }
 
   private struct WorktreeRowViewConfig {
@@ -220,5 +203,39 @@ struct WorktreeRowsView: View {
   private func worktreeShortcutHint(for index: Int?) -> String? {
     guard let index, AppShortcuts.worktreeSelection.indices.contains(index) else { return nil }
     return AppShortcuts.worktreeSelection[index].display
+  }
+}
+
+// MARK: - Drag Session Updated Modifier
+
+/// A ViewModifier that wraps the macOS 26.0+ onDragSessionUpdated API with an availability check.
+/// On macOS versions before 26.0, this modifier does nothing.
+private struct DragSessionUpdatedModifier: ViewModifier {
+  @Binding var draggingWorktreeIDs: Set<Worktree.ID>
+
+  func body(content: Content) -> some View {
+    if #available(macOS 26.0, *) {
+      content
+        .onDragSessionUpdated { session in
+          let draggedIDs = Set(session.draggedItemIDs(for: Worktree.ID.self))
+          if case .ended = session.phase {
+            if !draggingWorktreeIDs.isEmpty {
+              draggingWorktreeIDs = []
+            }
+            return
+          }
+          if case .dataTransferCompleted = session.phase {
+            if !draggingWorktreeIDs.isEmpty {
+              draggingWorktreeIDs = []
+            }
+            return
+          }
+          if draggedIDs != draggingWorktreeIDs {
+            draggingWorktreeIDs = draggedIDs
+          }
+        }
+    } else {
+      content
+    }
   }
 }

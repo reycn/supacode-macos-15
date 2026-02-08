@@ -74,7 +74,7 @@ Reducer ← .terminalEvent(Event) ← AsyncStream<Event>
 
 ## Code Guidelines
 
-- Target macOS 26.0+, Swift 6.2+
+- Target macOS 15.0+ (Sequoia), Swift 6.2+
 - Use `@ObservableState` for TCA feature state; use `@Observable` for non-TCA shared stores; never `ObservableObject`
 - Always mark `@Observable` classes with `@MainActor`
 - Modern SwiftUI only: `foregroundStyle()`, `NavigationStack`, `Button` over `onTapGesture()`
